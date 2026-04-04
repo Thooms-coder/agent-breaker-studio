@@ -36,12 +36,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [levelResults, setLevelResults] = useState<LevelResult[]>([]);
-  const [apiKey, setApiKeyState] = useState(() => localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY || '');
-
-  const setApiKey = (key: string) => {
-    localStorage.setItem('openrouter_api_key', key);
-    setApiKeyState(key);
-  };
+  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || '';
+  const setApiKey = () => {}; // no-op, key comes from env
 
   const addLevelResult = (result: LevelResult) => {
     setLevelResults(prev => [...prev.filter(r => r.vulnerabilityId !== result.vulnerabilityId), result]);

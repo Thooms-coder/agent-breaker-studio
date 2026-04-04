@@ -2,21 +2,19 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGame } from '@/context/GameContext';
 import { parseAgentCode, readFileContent } from '@/lib/agent-parser';
-import { Upload as UploadIcon, FileText, Key, ArrowRight, ArrowLeft, X } from 'lucide-react';
+import { Upload as UploadIcon, FileText, ArrowRight, ArrowLeft, X } from 'lucide-react';
 
 const Upload = () => {
   const navigate = useNavigate();
-  const { setParsedAgent, apiKey, setApiKey, setStep } = useGame();
+  const { setParsedAgent, setStep } = useGame();
   const [rawCode, setRawCode] = useState('');
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ReturnType<typeof parseAgentCode> | null>(null);
   const [editedPrompt, setEditedPrompt] = useState('');
   const [dragOver, setDragOver] = useState(false);
-  const [localApiKey, setLocalApiKey] = useState(apiKey);
 
   const handleParse = useCallback((code: string) => {
     const result = parseAgentCode(code);
@@ -40,7 +38,6 @@ const Upload = () => {
 
   const handleProceed = () => {
     if (!editedPrompt.trim()) return;
-    setApiKey(localApiKey);
     setParsedAgent({
       systemPrompt: editedPrompt,
       tools: parsed?.tools || [],
@@ -68,31 +65,6 @@ const Upload = () => {
           <h1 className="text-2xl font-bold text-neon-pink tracking-wider uppercase">Upload Agent</h1>
           <div className="w-20" />
         </div>
-
-        {/* API Key */}
-        <Card className="mb-6 neon-border bg-card border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-neon-yellow flex items-center gap-2 uppercase tracking-wider">
-              <Key className="w-4 h-4" />
-              OpenRouter API Key
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input
-              type="password"
-              placeholder="sk-or-v1-..."
-              value={localApiKey}
-              onChange={(e) => setLocalApiKey(e.target.value)}
-              className="bg-muted border-border font-mono text-sm"
-            />
-            <p className="text-muted-foreground text-xs mt-2">
-              Get your free key at{' '}
-              <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-neon-green hover:underline">
-                openrouter.ai/keys
-              </a>
-            </p>
-          </CardContent>
-        </Card>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Input */}
@@ -199,7 +171,7 @@ const Upload = () => {
 
             <Button
               onClick={handleProceed}
-              disabled={!editedPrompt.trim() || !localApiKey.trim()}
+              disabled={!editedPrompt.trim()}
               className="w-full bg-neon-pink text-background hover:bg-neon-pink/80 font-bold uppercase tracking-wider rounded-none"
             >
               Analyze Agent

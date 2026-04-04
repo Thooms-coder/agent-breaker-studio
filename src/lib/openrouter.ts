@@ -1,5 +1,5 @@
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'qwen/qwen3-235b-a22b:free';
+const MODEL = 'qwen/qwen3.6-plus:free';
 
 export interface Vulnerability {
   id: string;
@@ -21,7 +21,7 @@ export interface ChatMessage {
 }
 
 function getApiKey(): string {
-  return localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY || '';
+  return import.meta.env.VITE_OPENROUTER_API_KEY || '';
 }
 
 async function callOpenRouter(messages: ChatMessage[], apiKey?: string): Promise<string> {
