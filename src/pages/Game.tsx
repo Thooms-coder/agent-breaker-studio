@@ -151,7 +151,7 @@ const Game = () => {
                     }`}
                   >
                     <span className={`text-xs block mb-1 ${msg.role === 'user' ? 'text-neon-pink' : 'text-neon-green'}`}>
-                      {msg.role === 'user' ? '> YOU' : '> AGENT'}
+                      {msg.role === 'user' ? '› YOU' : '› AGENT'}
                     </span>
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                   </div>
