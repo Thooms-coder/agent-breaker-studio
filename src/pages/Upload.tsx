@@ -171,7 +171,7 @@ const Upload = () => {
 
             <Button
               onClick={handleProceed}
-              disabled={!editedPrompt.trim() || !localApiKey.trim()}
+              disabled={!editedPrompt.trim()}
               className="w-full bg-neon-pink text-background hover:bg-neon-pink/80 font-bold uppercase tracking-wider rounded-none"
             >
               Analyze Agent
