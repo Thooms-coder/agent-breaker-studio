@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGame } from '@/context/GameContext';
 import { parseAgentCode, readFileContent } from '@/lib/agent-parser';
-import { Upload as UploadIcon, FileText, Key, ArrowRight, ArrowLeft, X } from 'lucide-react';
+import { Upload as UploadIcon, FileText, ArrowRight, ArrowLeft, X } from 'lucide-react';
 
 const Upload = () => {
   const navigate = useNavigate();
