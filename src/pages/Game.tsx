@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
+import { useUser } from '@/context/UserContext';
 import { chatWithAgent, judgeExploit, ChatMessage } from '@/lib/openrouter';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +21,7 @@ const Game = () => {
     chatLogs,
     setChatLog
   } = useGame();
-
+  const { startLevel, recordMessage, recordBreak } = useUser();
   const vuln = vulnerabilities[currentLevel];
 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(
@@ -38,8 +39,9 @@ const Game = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!parsedAgent || !vuln) navigate('/levels');
-  }, [parsedAgent, vuln, navigate]);
+    if (!parsedAgent || !vuln) { navigate('/levels'); return; }
+    startLevel(vuln.id, vuln.name, vuln.category);
+  }, [parsedAgent, vuln, navigate, startLevel]);
 
   // Restore chat per level
   useEffect(() => {
@@ -76,6 +78,7 @@ const Game = () => {
     setChatHistory(newHistory);
     setInput('');
     setSending(true);
+    recordMessage(vuln.id);
 
     try {
       const response = await chatWithAgent(parsedAgent.systemPrompt, newHistory);
@@ -94,7 +97,8 @@ const Game = () => {
 
         if (result.broken) {
           setBroken(true);
-
+          setBreakExplanation(result.explanation);
+          recordBreak(vuln.id);
           addLevelResult({
             vulnerabilityId: vuln.id,
             broken: true,
@@ -125,7 +129,7 @@ const Game = () => {
       if (result.broken) {
         setBroken(true);
         setBreakExplanation(result.explanation);
-
+        recordBreak(vuln.id);
         addLevelResult({
           vulnerabilityId: vuln.id,
           broken: true,
