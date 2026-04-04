@@ -23,6 +23,8 @@ interface GameState {
   levelResults: LevelResult[];
   setLevelResults: (results: LevelResult[]) => void;
   addLevelResult: (result: LevelResult) => void;
+  chatLogs: Record<string, ChatMessage[]>;
+  setChatLog: (vulnId: string, messages: ChatMessage[]) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
   resetGame: () => void;
@@ -36,11 +38,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [levelResults, setLevelResults] = useState<LevelResult[]>([]);
+  const [chatLogs, setChatLogs] = useState<Record<string, ChatMessage[]>>({});
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || '';
   const setApiKey = () => {}; // no-op, key comes from env
 
   const addLevelResult = (result: LevelResult) => {
     setLevelResults(prev => [...prev.filter(r => r.vulnerabilityId !== result.vulnerabilityId), result]);
+  };
+
+  const setChatLog = (vulnId: string, messages: ChatMessage[]) => {
+    setChatLogs(prev => ({ ...prev, [vulnId]: messages }));
   };
 
   const resetGame = () => {
@@ -49,6 +56,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setVulnerabilities([]);
     setCurrentLevel(0);
     setLevelResults([]);
+    setChatLogs({});
   };
 
   return (
@@ -59,6 +67,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       currentLevel, setCurrentLevel,
       levelResults, setLevelResults,
       addLevelResult,
+      chatLogs, setChatLog,
       apiKey, setApiKey,
       resetGame,
     }}>
