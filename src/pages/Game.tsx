@@ -10,8 +10,9 @@ import { Send, ArrowLeft, SkipForward, Zap, Eye, Shield, AlertTriangle, CheckCir
 
 const Game = () => {
   const navigate = useNavigate();
-  const { parsedAgent, vulnerabilities, currentLevel, addLevelResult, setStep, setCurrentLevel } = useGame();
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const { parsedAgent, vulnerabilities, currentLevel, addLevelResult, setStep, setCurrentLevel, chatLogs, setChatLog } = useGame();
+  const vuln = vulnerabilities[currentLevel];
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => (vuln ? chatLogs[vuln.id] ?? [] : []));
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [judging, setJudging] = useState(false);
@@ -20,11 +21,27 @@ const Game = () => {
   const [judgeFailed, setJudgeFailed] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const vuln = vulnerabilities[currentLevel];
-
   useEffect(() => {
     if (!parsedAgent || !vuln) navigate('/levels');
   }, [parsedAgent, vuln, navigate]);
+
+  // Restore chat log when switching levels within the component
+  useEffect(() => {
+    if (vuln) {
+      const saved = chatLogs[vuln.id] ?? [];
+      setChatHistory(saved);
+      setBroken(false);
+      setBreakExplanation('');
+      setJudgeFailed('');
+    }
+  }, [currentLevel]);
+
+  // Persist chat log to context whenever it changes
+  useEffect(() => {
+    if (vuln && chatHistory.length > 0) {
+      setChatLog(vuln.id, chatHistory);
+    }
+  }, [chatHistory]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,10 +122,6 @@ const Game = () => {
   const goNext = () => {
     if (currentLevel < vulnerabilities.length - 1) {
       setCurrentLevel(currentLevel + 1);
-      setChatHistory([]);
-      setBroken(false);
-      setBreakExplanation('');
-      setJudgeFailed('');
     } else {
       setStep('summary');
       navigate('/summary');
