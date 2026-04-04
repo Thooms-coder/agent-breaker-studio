@@ -38,7 +38,6 @@ const Upload = () => {
 
   const handleProceed = () => {
     if (!editedPrompt.trim()) return;
-    setApiKey(localApiKey);
     setParsedAgent({
       systemPrompt: editedPrompt,
       tools: parsed?.tools || [],
