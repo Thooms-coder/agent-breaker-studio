@@ -681,7 +681,7 @@ function normalizeChunkEnvelope(envelope: ChunkScanEnvelope, fallbackSummary: st
     tools: uniqueStrings(envelope.tools).slice(0, 6),
     modelConfigs: uniqueStrings(envelope.modelConfigs).slice(0, 4),
     guardrails: uniqueStrings(envelope.guardrails).slice(0, 4),
-    vulnerabilities: (envelope.vulnerabilities || []).slice(0, 3).map((finding) => ({
+    vulnerabilities: (envelope.vulnerabilities || []).slice(0, 8).map((finding) => ({
       ...finding,
       name: asString(finding.name),
       category: asString(finding.category),
@@ -841,11 +841,13 @@ async function analyzeCodebaseChunk(chunk: CodebaseChunk, totalChunks: number, u
 - summary max 2 sentences
 - at most 2 items each for architecturalNotes, systemPrompts, guardrails, modelConfigs
 - at most 3 items each for entryPoints and tools
-- at most 2 vulnerabilities
+- at most 4 vulnerabilities (include all you can justify — do not invent, but do not self-censor)
 - evidence entries must be short`
-    : `Keep the response compact:
-- include every distinct vulnerability you can justify from these files, but keep each finding concise
-- at most 4 items for any list
+    : `Reporting rules:
+- Include EVERY distinct vulnerability you can justify from these files — do not cap or self-limit the vulnerability list
+- Be fine-grained: if there are 6 real exploitable issues, report all 6
+- Keep each finding concise but complete
+- at most 4 items for non-vulnerability lists (architecturalNotes, entryPoints, systemPrompts, tools, modelConfigs, guardrails)
 - quote only short prompt snippets, not long passages`;
 
   const response = await requestStructuredJson<ChunkScanEnvelope>([
@@ -970,10 +972,12 @@ ${schemaHint}
 Requirements:
 - Reconstruct the overall effective system prompt or operating instructions in systemPromptSummary
 - Synthesize tools, model config, guardrails, and prompt fragments across all scans
-- Return every distinct vulnerability the delegated findings support with real evidence
+- Return EVERY distinct vulnerability the delegated findings support — do not merge issues that have different root causes, different attack vectors, or different affected components even if they share the same category
+- Preserve high-confidence chunk findings verbatim if they are already well-described; only synthesize when merging truly duplicate reports of the same flaw
 - Every vulnerability must be grounded in evidence from the delegated findings
 - Ignore delegated scans that explicitly say fallback/no vulnerabilities unless other scans corroborate them
 - Be specific about issue type and likely impact instead of collapsing everything into broad buckets
+- If the delegated findings collectively report 8 distinct exploitable issues, your output should include all 8
 - Keep only vulnerabilities with confidence >= ${MIN_VULNERABILITY_CONFIDENCE} and teachingValue >= ${MIN_VULNERABILITY_TEACHING_VALUE}
 - No markdown fences, no commentary`,
     },
