@@ -282,6 +282,34 @@
   animation: remediation-glow 2.4s ease-in-out infinite;
 }
 
+@keyframes completion-enter {
+  0% { opacity: 0; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes completion-line {
+  0% { width: 0; opacity: 0; }
+  100% { width: 100%; opacity: 1; }
+}
+
+@keyframes completion-badge-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.completion-overlay {
+  animation: completion-enter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-line {
+  animation: completion-line 0.9s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-badge-pop {
+  animation: completion-badge-pop 0.5s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 .redacted {
   background: hsl(var(--foreground));
   color: hsl(var(--foreground));

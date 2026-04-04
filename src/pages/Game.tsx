@@ -36,6 +36,7 @@ const Game = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const completionTimerRef = useRef<number | null>(null);
+  const brokenLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!parsedAgent || !vuln) {
@@ -53,30 +54,28 @@ const Game = () => {
     setBroken(false);
     setBreakExplanation('');
     setJudgeFailed('');
-  }, [chatLogs, currentLevel, vuln]);
-
-  useEffect(() => {
-    if (!vuln) return;
-    setChatLog(vuln.id, chatHistory);
-  }, [chatHistory, setChatLog, vuln]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLevel, vuln?.id]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
   const returnToLevelSelect = useCallback(() => {
-    if (!vuln) return;
+    const level = brokenLevelRef.current ?? currentLevel;
+    const v = vulnerabilities[level];
+    if (!v) return;
 
-    const nextLevel = currentLevel < vulnerabilities.length - 1 ? currentLevel + 1 : undefined;
+    const nextLevel = level < vulnerabilities.length - 1 ? level + 1 : undefined;
     setStep('levelSelect');
     navigate('/levels', {
       state: {
-        focusLevel: currentLevel,
+        focusLevel: level,
         autoAdvanceTo: nextLevel,
-        justCompletedId: vuln.id,
+        justCompletedId: v.id,
       },
     });
-  }, [currentLevel, navigate, setStep, vulnerabilities.length, vuln]);
+  }, [currentLevel, navigate, setStep, vulnerabilities]);
 
   useEffect(() => {
     if (!broken) return;
@@ -111,6 +110,7 @@ const Game = () => {
     const userMsg: ChatMessage = { role: 'user', content: input };
     const newHistory = [...chatHistory, userMsg];
     setChatHistory(newHistory);
+    setChatLog(vuln.id, newHistory);
     setInput('');
     setSending(true);
     recordMessage(vuln.id);
@@ -120,6 +120,7 @@ const Game = () => {
       const assistantMsg: ChatMessage = { role: 'assistant', content: response };
       const fullHistory = [...newHistory, assistantMsg];
       setChatHistory(fullHistory);
+      setChatLog(vuln.id, fullHistory);
 
       const userTurnCount = fullHistory.filter(message => message.role === 'user').length;
       if (userTurnCount >= 3 && userTurnCount % 2 === 0) {
@@ -128,6 +129,7 @@ const Game = () => {
         setJudging(false);
 
         if (result.broken) {
+          brokenLevelRef.current = currentLevel;
           setBroken(true);
           setBreakExplanation(result.explanation);
           recordBreak(vuln.id);
@@ -140,10 +142,12 @@ const Game = () => {
         }
       }
     } catch (error: any) {
-      setChatHistory((previous) => [
-        ...previous,
+      const errorHistory: ChatMessage[] = [
+        ...chatHistory,
         { role: 'assistant', content: `[Error: ${error.message}]` },
-      ]);
+      ];
+      setChatHistory(errorHistory);
+      setChatLog(vuln.id, errorHistory);
     }
 
     setSending(false);
@@ -158,6 +162,7 @@ const Game = () => {
     try {
       const result = await judgeExploit(parsedAgent.systemPrompt, chatHistory, vuln);
       if (result.broken) {
+        brokenLevelRef.current = currentLevel;
         setBroken(true);
         setBreakExplanation(result.explanation);
         recordBreak(vuln.id);

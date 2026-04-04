@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Skull, Lock, CheckCircle, Home, Shield, Sparkles } from 'lucide-react';
+import { Skull, Lock, CheckCircle, Home, Shield, Sparkles, Trophy } from 'lucide-react';
 
 const ROW_HEIGHT = 140;
 const NODE_SIZE = 80;
@@ -37,7 +37,12 @@ const LevelSelect = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { vulnerabilities, setCurrentLevel, setStep, levelResults } = useGame();
-  const [selected, setSelected] = useState(0);
+  const navState = location.state as LevelSelectNavState | null;
+  const [selected, setSelected] = useState(() =>
+    typeof navState?.focusLevel === 'number'
+      ? Math.max(0, Math.min(vulnerabilities.length - 1, navState.focusLevel))
+      : 0
+  );
   const [recentlyCompletedId, setRecentlyCompletedId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -119,23 +124,21 @@ const LevelSelect = () => {
     };
   }, [updateLayout]);
 
+  const navStateRef = useRef(navState);
   useEffect(() => {
-    const navState = location.state as LevelSelectNavState | null;
-    if (!navState) return;
+    const state = navStateRef.current;
+    navStateRef.current = null;
+    if (!state) return;
 
-    const clampedFocus = typeof navState.focusLevel === 'number'
-      ? Math.max(0, Math.min(vulnerabilities.length - 1, navState.focusLevel))
+    const clampedFocus = typeof state.focusLevel === 'number'
+      ? Math.max(0, Math.min(vulnerabilities.length - 1, state.focusLevel))
       : null;
-    const clampedAutoAdvance = typeof navState.autoAdvanceTo === 'number'
-      ? Math.max(0, Math.min(vulnerabilities.length - 1, navState.autoAdvanceTo))
+    const clampedAutoAdvance = typeof state.autoAdvanceTo === 'number'
+      ? Math.max(0, Math.min(vulnerabilities.length - 1, state.autoAdvanceTo))
       : null;
 
-    if (clampedFocus !== null) {
-      setSelected(clampedFocus);
-    }
-
-    if (navState.justCompletedId) {
-      setRecentlyCompletedId(navState.justCompletedId);
+    if (state.justCompletedId) {
+      setRecentlyCompletedId(state.justCompletedId);
       if (completionPulseTimerRef.current !== null) {
         window.clearTimeout(completionPulseTimerRef.current);
       }
@@ -158,7 +161,8 @@ const LevelSelect = () => {
     }
 
     navigate(location.pathname, { replace: true, state: null });
-  }, [clearAutoAdvance, location.pathname, location.state, navigate, vulnerabilities.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleKey = useCallback((event: KeyboardEvent) => {
     clearAutoAdvance();
@@ -187,12 +191,14 @@ const LevelSelect = () => {
     };
   }, []);
 
-  const allDone = vulnerabilities.length > 0 && levelResults.length === vulnerabilities.length;
+  const allDone = vulnerabilities.length > 0 && levelResults.length >= vulnerabilities.length;
+  const brokenCount = levelResults.filter((r) => r.broken).length;
   const total = vulnerabilities.length;
   const containerHeight = total * ROW_HEIGHT;
   const connectorPath = buildConnectorPath(nodeCenters);
 
   return (
+    <>
     <div className="min-h-screen noise-bg p-4 md:p-8">
       <div className="scanline-overlay" />
       <div className="max-w-3xl mx-auto relative z-10">
@@ -412,20 +418,6 @@ const LevelSelect = () => {
           )}
         </div>
 
-        {allDone && (
-          <div className="text-center mt-12">
-            <button
-              onClick={() => {
-                setStep('summary');
-                navigate('/summary');
-              }}
-              className="bg-neon-green text-background px-8 py-3 font-bold uppercase tracking-wider hover:bg-neon-green/80 transition-colors"
-            >
-              View Report Card
-            </button>
-          </div>
-        )}
-
         {levelResults.length > 0 && !allDone && (
           <div className="text-center mt-8">
             <button
@@ -441,6 +433,76 @@ const LevelSelect = () => {
         )}
       </div>
     </div>
+
+    {allDone && (
+      <div className="completion-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/96 backdrop-blur-sm">
+        <div className="scanline-overlay" />
+        <div className="relative z-10 text-center px-6 max-w-xl mx-auto w-full">
+
+          <div className="completion-badge-pop flex justify-center mb-6">
+            <div
+              className="relative flex items-center justify-center w-28 h-28 rounded-full border-4 border-neon-green bg-neon-green/10"
+              style={{ boxShadow: '0 0 40px rgba(0,255,128,0.4), 0 0 80px rgba(0,255,128,0.15)' }}
+            >
+              <Trophy className="w-14 h-14 text-neon-green" />
+            </div>
+          </div>
+
+          <h1
+            className="text-5xl md:text-6xl font-bold text-neon-green tracking-tighter uppercase mb-2 glitch-text"
+            data-text="SYSTEM BREACHED"
+          >
+            SYSTEM BREACHED
+          </h1>
+
+          <div
+            className="completion-line h-px bg-neon-green/50 mx-auto mb-6"
+            style={{ maxWidth: '320px', boxShadow: '0 0 8px rgba(0,255,128,0.4)' }}
+          />
+
+          <p className="text-muted-foreground uppercase tracking-[0.2em] text-xs mb-10">
+            All {total} {total === 1 ? 'vulnerability' : 'vulnerabilities'} exploited — agent compromised
+          </p>
+
+          <div className="grid grid-cols-3 gap-3 mb-10 border border-neon-green/20 bg-neon-green/5 p-4">
+            <div>
+              <p className="text-3xl font-bold text-neon-green">{total}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Levels</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-neon-green">{brokenCount}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Broken</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-neon-yellow">
+                {total > 0 ? Math.round((brokenCount / total) * 100) : 0}%
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Success</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => {
+                setStep('summary');
+                navigate('/summary');
+              }}
+              className="bg-neon-green text-background px-10 py-3 font-bold uppercase tracking-wider hover:bg-neon-green/80 transition-colors"
+              style={{ boxShadow: '0 0 20px rgba(0,255,128,0.3)' }}
+            >
+              View Report Card
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="border border-neon-pink/50 text-neon-pink px-10 py-3 font-bold uppercase tracking-wider hover:bg-neon-pink/10 transition-colors"
+            >
+              New Game
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

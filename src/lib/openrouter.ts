@@ -497,12 +497,32 @@ function normalizeVulnerability(value: unknown, index: number): Vulnerability | 
   };
 }
 
+function deduplicateVulnerabilityIds(vulns: Vulnerability[]): Vulnerability[] {
+  const seen = new Set<string>();
+  return vulns.map((v) => {
+    if (!seen.has(v.id)) {
+      seen.add(v.id);
+      return v;
+    }
+    let unique = v.id;
+    let suffix = 2;
+    while (seen.has(unique)) {
+      unique = `${v.id}-${suffix}`;
+      suffix += 1;
+    }
+    seen.add(unique);
+    return { ...v, id: unique };
+  });
+}
+
 function normalizeAnalysisEnvelope(value: unknown): NormalizedAnalysisResult {
   if (Array.isArray(value)) {
     return {
-      vulnerabilities: value
-        .map((item, index) => normalizeVulnerability(item, index))
-        .filter((item): item is Vulnerability => item !== null),
+      vulnerabilities: deduplicateVulnerabilityIds(
+        value
+          .map((item, index) => normalizeVulnerability(item, index))
+          .filter((item): item is Vulnerability => item !== null),
+      ),
     };
   }
 
@@ -517,9 +537,11 @@ function normalizeAnalysisEnvelope(value: unknown): NormalizedAnalysisResult {
 
   return {
     systemPromptSummary: asString(record.systemPromptSummary),
-    vulnerabilities: vulnerabilitiesSource
-      .map((item, index) => normalizeVulnerability(item, index))
-      .filter((item): item is Vulnerability => item !== null),
+    vulnerabilities: deduplicateVulnerabilityIds(
+      vulnerabilitiesSource
+        .map((item, index) => normalizeVulnerability(item, index))
+        .filter((item): item is Vulnerability => item !== null),
+    ),
   };
 }
 
