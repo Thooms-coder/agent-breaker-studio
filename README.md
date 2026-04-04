@@ -281,3 +281,9 @@ Run analysis to detect vulnerabilities
 Begin adversarial testing through interactive levels
 
 ---
+
+## Conclusion
+
+BREAK IT introduces a practical, interactive methodology for AI agent security evaluation. By integrating automated detection with hands-on exploitation, it enables developers to move beyond theoretical vulnerabilities and directly observe how—and why—their systems fail under adversarial conditions.
+
+---
