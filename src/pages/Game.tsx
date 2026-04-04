@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, SkipForward, Zap, Eye, AlertTriangle, X, Shield, CheckCircle, Flag } from 'lucide-react';
+import { Send, ArrowLeft, SkipForward, Zap, Eye, AlertTriangle, X, Shield, CheckCircle, Flag, RotateCcw } from 'lucide-react';
 
 const Game = () => {
   const navigate = useNavigate();
@@ -182,6 +182,13 @@ const Game = () => {
     setJudging(false);
   };
 
+  const handleReset = () => {
+    if (sending || broken) return;
+    setChatHistory([]);
+    setChatLog(vuln.id, []);
+    setJudgeFailed('');
+  };
+
   const handleSkip = () => {
     addLevelResult({
       vulnerabilityId: vuln.id,
@@ -212,9 +219,14 @@ const Game = () => {
       <div className="scanline-overlay" />
 
       <div className="relative z-10 border-b border-border px-4 py-3 flex items-center justify-between bg-card/50">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/levels')} className="text-muted-foreground hover:text-neon-pink">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Levels
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/levels')} className="text-muted-foreground hover:text-neon-pink">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Levels
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleReset} disabled={sending || broken || chatHistory.length === 0} className="text-muted-foreground hover:text-neon-yellow">
+            <RotateCcw className="w-4 h-4 mr-1" /> Reset
+          </Button>
+        </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground uppercase tracking-wider">Level</span>
