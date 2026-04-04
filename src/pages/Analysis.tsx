@@ -56,9 +56,11 @@ const Analysis = () => {
           setLoading(false);
           return;
         }
-        // For codebase uploads, the AI extracts the system prompt — update parsedAgent
+        // For codebase uploads, the AI extracts the system prompt — always use it for game simulation.
+        // parsedAgent.systemPrompt here is the user's optional notes, not the actual agent prompt.
         const extractedPrompt = (vulns as any).__extractedSystemPrompt;
-        if (extractedPrompt && !parsedAgent.systemPrompt) {
+        const isCodebase = parsedAgent.rawCode?.includes('=== FILE TREE ===');
+        if (extractedPrompt && isCodebase) {
           setParsedAgent({ ...parsedAgent, systemPrompt: extractedPrompt });
         }
         setVulnerabilities(vulns);

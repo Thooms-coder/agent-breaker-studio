@@ -68,6 +68,23 @@ async function restFetch(path: string, options: RequestInit = {}): Promise<Respo
   });
 }
 
+// ── Dummy seed entries (shown on every day's leaderboard) ─────────────────
+
+const DUMMY_PLAYERS: Omit<StoredEntry, 'date'>[] = [
+  { username: 'xpl0itqu33n',     brokenCount: 3, totalCount: 3, timeMs: 213_000 },
+  { username: 'h4ck_th3_plan3t', brokenCount: 3, totalCount: 3, timeMs: 287_000 },
+  { username: 'red_panda_42',    brokenCount: 2, totalCount: 3, timeMs: 195_000 },
+  { username: 'promptlord',      brokenCount: 2, totalCount: 3, timeMs: 342_000 },
+  { username: 'zer0c00l',        brokenCount: 2, totalCount: 3, timeMs: 408_000 },
+  { username: 'cipher_shark',    brokenCount: 1, totalCount: 3, timeMs: 261_000 },
+  { username: 'null_byte_99',    brokenCount: 1, totalCount: 3, timeMs: 374_000 },
+  { username: 'darkflux',        brokenCount: 0, totalCount: 3, timeMs: 455_000 },
+];
+
+function getDummyEntries(date: string): StoredEntry[] {
+  return DUMMY_PLAYERS.map(p => ({ ...p, date }));
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export function isGlobalLeaderboardEnabled(): boolean {
@@ -119,5 +136,13 @@ export async function getLeaderboard(date: string): Promise<LeaderboardEntry[]> 
     } catch { /* fall through to local */ }
   }
 
-  return getLocalForDate(date).map((e, i) => ({ ...e, rank: i + 1 }));
+  // Merge local scores with dummy seed entries (real players override dummies by username)
+  const local = getLocalForDate(date);
+  const dummy = getDummyEntries(date);
+  const realUsernames = new Set(local.map(e => e.username));
+  const merged = [...local, ...dummy.filter(d => !realUsernames.has(d.username))]
+    .sort((a, b) => b.brokenCount - a.brokenCount || a.timeMs - b.timeMs)
+    .slice(0, 20);
+
+  return merged.map((e, i) => ({ ...e, rank: i + 1 }));
 }
