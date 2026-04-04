@@ -9,13 +9,12 @@ import { Upload as UploadIcon, FileText, ArrowRight, ArrowLeft, X } from 'lucide
 
 const Upload = () => {
   const navigate = useNavigate();
-  const { setParsedAgent, apiKey, setApiKey, setStep } = useGame();
+  const { setParsedAgent, setStep } = useGame();
   const [rawCode, setRawCode] = useState('');
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ReturnType<typeof parseAgentCode> | null>(null);
   const [editedPrompt, setEditedPrompt] = useState('');
   const [dragOver, setDragOver] = useState(false);
-  const [localApiKey, setLocalApiKey] = useState(apiKey);
 
   const handleParse = useCallback((code: string) => {
     const result = parseAgentCode(code);
