@@ -160,7 +160,7 @@ const Game = () => {
               {sending && (
                 <div className="flex justify-start">
                   <div className="bg-muted border border-border px-4 py-3 text-sm">
-                    <span className="text-neon-green text-xs block mb-1">> AGENT</span>
+                    <span className="text-neon-green text-xs block mb-1">{'>'} AGENT</span>
                     <span className="animate-pulse text-muted-foreground">thinking...</span>
                   </div>
                 </div>
