@@ -4,7 +4,9 @@ import { useUser } from '@/context/UserContext';
 import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skull, Shield, CheckCircle, XCircle, RotateCcw, Upload, Clock, MessageSquare, Zap, Timer } from 'lucide-react';
+import { Skull, Shield, CheckCircle, XCircle, RotateCcw, Upload, Clock, MessageSquare, Zap, Timer, Calendar } from 'lucide-react';
+import { saveDailyRecord } from '@/lib/daily-challenge';
+import { submitScore } from '@/lib/leaderboard';
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return '<1s';
@@ -17,8 +19,11 @@ function formatDuration(ms: number): string {
 
 const Summary = () => {
   const navigate = useNavigate();
-  const { vulnerabilities, levelResults, resetGame } = useGame();
-  const { currentSession, endSession } = useUser();
+  const {
+    vulnerabilities, levelResults, resetGame,
+    isDailyChallenge, dailyChallengeDate, dailyChallengeStartTime,
+  } = useGame();
+  const { currentSession, endSession, profile } = useUser();
   const sessionEnded = useRef(false);
 
   useEffect(() => {
@@ -32,6 +37,33 @@ const Summary = () => {
       endSession();
     }
   }, [currentSession, endSession]);
+
+  // Save daily challenge record on completion
+  useEffect(() => {
+    if (!isDailyChallenge || !dailyChallengeDate || !dailyChallengeStartTime) return;
+    if (vulnerabilities.length === 0) return;
+
+    const brokenCount = levelResults.filter(r => r.broken).length;
+    const timeMs = Date.now() - dailyChallengeStartTime;
+
+    const record = {
+      date: dailyChallengeDate,
+      brokenCount,
+      totalCount: vulnerabilities.length,
+      timeMs,
+      completedAt: Date.now(),
+    };
+    saveDailyRecord(record);
+
+    submitScore({
+      username: profile.username,
+      date: dailyChallengeDate,
+      brokenCount,
+      totalCount: vulnerabilities.length,
+      timeMs,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const brokenCount = levelResults.filter(r => r.broken).length;
   const totalCount = vulnerabilities.length;
@@ -224,14 +256,24 @@ const Summary = () => {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            onClick={() => navigate('/levels')}
-            variant="outline"
-            className="border-neon-yellow text-neon-yellow hover:bg-neon-yellow/10 rounded-none"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Retry Levels
-          </Button>
+          {isDailyChallenge ? (
+            <Button
+              onClick={() => navigate('/daily')}
+              className="bg-neon-green text-background hover:bg-neon-green/80 font-bold uppercase tracking-wider rounded-none"
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              View Leaderboard
+            </Button>
+          ) : (
+            <Button
+              onClick={() => navigate('/levels')}
+              variant="outline"
+              className="border-neon-yellow text-neon-yellow hover:bg-neon-yellow/10 rounded-none"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Retry Levels
+            </Button>
+          )}
           <Button
             onClick={() => navigate('/profile')}
             variant="outline"

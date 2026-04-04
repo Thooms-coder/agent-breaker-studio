@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import LevelSelect from "./pages/LevelSelect";
 import Game from "./pages/Game";
 import Summary from "./pages/Summary";
 import Profile from "./pages/Profile";
+import DailyChallenge from "./pages/DailyChallenge";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +24,7 @@ const App = () => (
       <Sonner />
       <UserProvider>
         <GameProvider>
-          <BrowserRouter>
+          <HashRouter>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/upload" element={<Upload />} />
@@ -32,9 +33,10 @@ const App = () => (
               <Route path="/game" element={<Game />} />
               <Route path="/summary" element={<Summary />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/daily" element={<DailyChallenge />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </HashRouter>
         </GameProvider>
       </UserProvider>
     </TooltipProvider>

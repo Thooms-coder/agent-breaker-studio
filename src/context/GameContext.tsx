@@ -28,6 +28,12 @@ interface GameState {
   apiKey: string;
   setApiKey: (key: string) => void;
   resetGame: () => void;
+  isDailyChallenge: boolean;
+  setIsDailyChallenge: (v: boolean) => void;
+  dailyChallengeDate: string | null;
+  setDailyChallengeDate: (date: string | null) => void;
+  dailyChallengeStartTime: number | null;
+  setDailyChallengeStartTime: (t: number | null) => void;
 }
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -39,6 +45,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [currentLevel, setCurrentLevel] = useState(0);
   const [levelResults, setLevelResults] = useState<LevelResult[]>([]);
   const [chatLogs, setChatLogs] = useState<Record<string, ChatMessage[]>>({});
+  const [isDailyChallenge, setIsDailyChallenge] = useState(false);
+  const [dailyChallengeDate, setDailyChallengeDate] = useState<string | null>(null);
+  const [dailyChallengeStartTime, setDailyChallengeStartTime] = useState<number | null>(null);
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || '';
   const setApiKey = () => {}; // no-op, key comes from env
 
@@ -57,6 +66,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setCurrentLevel(0);
     setLevelResults([]);
     setChatLogs({});
+    setIsDailyChallenge(false);
+    setDailyChallengeDate(null);
+    setDailyChallengeStartTime(null);
   };
 
   return (
@@ -70,6 +82,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       chatLogs, setChatLog,
       apiKey, setApiKey,
       resetGame,
+      isDailyChallenge, setIsDailyChallenge,
+      dailyChallengeDate, setDailyChallengeDate,
+      dailyChallengeStartTime, setDailyChallengeStartTime,
     }}>
       {children}
     </GameContext.Provider>
