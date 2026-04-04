@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Skull, Lock, CheckCircle } from 'lucide-react';
+import { Skull, Lock, CheckCircle, Home } from 'lucide-react';
 
 const ROW_HEIGHT = 140;
 const NODE_SIZE = 80;
@@ -126,6 +126,18 @@ const LevelSelect = () => {
     <div className="min-h-screen noise-bg p-4 md:p-8">
       <div className="scanline-overlay" />
       <div className="max-w-3xl mx-auto relative z-10">
+
+        {/* Home button */}
+        <div className="mb-4">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-muted-foreground hover:text-neon-pink transition-colors text-sm uppercase tracking-wider"
+          >
+            <Home className="w-4 h-4" />
+            Home
+          </button>
+        </div>
+
         <div className="text-center mb-8">
           <h1
             className="text-4xl md:text-5xl font-bold text-neon-pink tracking-tighter uppercase mb-2 glitch-text"
