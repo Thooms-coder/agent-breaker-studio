@@ -194,6 +194,8 @@ const LevelSelect = () => {
   const allDone = vulnerabilities.length > 0 && levelResults.length >= vulnerabilities.length;
   const brokenCount = levelResults.filter((r) => r.broken).length;
   const total = vulnerabilities.length;
+  /** Full celebration only when every level was exploited — skips do not count. */
+  const allBreached = allDone && total > 0 && brokenCount === total;
   const containerHeight = total * ROW_HEIGHT;
   const connectorPath = buildConnectorPath(nodeCenters);
 
@@ -431,10 +433,28 @@ const LevelSelect = () => {
             </button>
           </div>
         )}
+
+        {allDone && !allBreached && (
+          <div className="text-center mt-10 space-y-4">
+            <p className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
+              All levels resolved — view your report card
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setStep('summary');
+                navigate('/summary');
+              }}
+              className="bg-neon-green text-background px-10 py-3 font-bold uppercase tracking-wider hover:bg-neon-green/80 transition-colors"
+            >
+              View Report Card
+            </button>
+          </div>
+        )}
       </div>
     </div>
 
-    {allDone && (
+    {allBreached && (
       <div className="completion-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/96 backdrop-blur-sm">
         <div className="scanline-overlay" />
         <div className="relative z-10 text-center px-6 max-w-xl mx-auto w-full">

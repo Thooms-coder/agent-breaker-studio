@@ -4,7 +4,7 @@ import { useUser } from '@/context/UserContext';
 import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skull, Shield, CheckCircle, XCircle, RotateCcw, Upload, Clock, MessageSquare, Zap, Timer, Calendar } from 'lucide-react';
+import { Skull, Shield, CheckCircle, XCircle, RotateCcw, Upload, Clock, MessageSquare, Zap, Timer, Calendar, SkipForward } from 'lucide-react';
 import { saveDailyRecord } from '@/lib/daily-challenge';
 import { submitScore } from '@/lib/leaderboard';
 
@@ -42,7 +42,7 @@ const Summary = () => {
     if (!isDailyChallenge || !dailyChallengeDate || !dailyChallengeStartTime) return;
     if (vulnerabilities.length === 0) return;
 
-    const brokenCount = levelResults.filter(r => r.broken).length;
+    const brokenCount = levelResults.filter((r) => r.broken).length;
     const timeMs = Date.now() - dailyChallengeStartTime;
 
     const record = {
@@ -64,9 +64,18 @@ const Summary = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const brokenCount = levelResults.filter(r => r.broken).length;
+  const brokenCount = levelResults.filter((r) => r.broken).length;
+  const isResultSkipped = (r: (typeof levelResults)[number]) =>
+    Boolean(r.skipped) || r.explanation === 'Skipped';
+
+  const skippedCount = levelResults.filter(isResultSkipped).length;
+  const verifiedHeldCount = levelResults.filter((r) => !r.broken && !isResultSkipped(r)).length;
+  const untestedCount = vulnerabilities.filter(
+    (v) => !levelResults.some((r) => r.vulnerabilityId === v.id),
+  ).length;
   const totalCount = vulnerabilities.length;
-  const score = totalCount > 0 ? Math.round(((totalCount - brokenCount) / totalCount) * 100) : 0;
+  /** Only levels where the agent was verified not broken (skips and untested = no credit). */
+  const score = totalCount > 0 ? Math.round((verifiedHeldCount / totalCount) * 100) : 0;
   const skullRating = totalCount > 0 ? Math.round((brokenCount / totalCount) * 5) : 0;
 
   const getGrade = () => {
@@ -114,20 +123,33 @@ const Summary = () => {
               ))}
             </div>
 
-            <div className="flex justify-center gap-8 text-sm">
+            <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm px-2">
               <div>
                 <p className="text-neon-pink text-2xl font-bold">{brokenCount}</p>
                 <p className="text-muted-foreground text-xs uppercase">Broken</p>
               </div>
               <div>
-                <p className="text-neon-green text-2xl font-bold">{totalCount - brokenCount}</p>
+                <p className="text-neon-yellow text-2xl font-bold">{skippedCount}</p>
+                <p className="text-muted-foreground text-xs uppercase">Skipped</p>
+              </div>
+              <div>
+                <p className="text-neon-green text-2xl font-bold">{verifiedHeldCount}</p>
                 <p className="text-muted-foreground text-xs uppercase">Held</p>
               </div>
+              {untestedCount > 0 && (
+                <div>
+                  <p className="text-muted-foreground text-2xl font-bold">{untestedCount}</p>
+                  <p className="text-muted-foreground text-xs uppercase">Not tested</p>
+                </div>
+              )}
               <div>
                 <p className="text-foreground text-2xl font-bold">{score}%</p>
                 <p className="text-muted-foreground text-xs uppercase">Score</p>
               </div>
             </div>
+            <p className="text-muted-foreground text-[11px] mt-4 max-w-md mx-auto leading-relaxed">
+              Score is verified holds only. Skipped and not-tested levels count as 0 toward the agent&apos;s score.
+            </p>
           </CardContent>
         </Card>
 
@@ -178,28 +200,48 @@ const Summary = () => {
         <div className="space-y-4 mb-8">
           {vulnerabilities.map((vulnerability) => {
             const result = levelResults.find((entry) => entry.vulnerabilityId === vulnerability.id);
-            const isBroken = result?.broken;
+            const isBroken = Boolean(result?.broken);
+            const isSkipped = result ? isResultSkipped(result) : false;
+            const isVerifiedHeld = Boolean(result && !isBroken && !isSkipped);
             const levelStat = sessionLevels.find((level) => level.vulnerabilityId === vulnerability.id);
+
+            const statusBadge = isBroken
+              ? { label: 'BROKEN', className: 'bg-neon-pink/10 text-neon-pink' }
+              : isSkipped
+                ? { label: 'SKIPPED', className: 'bg-neon-yellow/10 text-neon-yellow' }
+                : isVerifiedHeld
+                  ? { label: 'HELD', className: 'bg-neon-green/10 text-neon-green' }
+                  : { label: 'NOT TESTED', className: 'bg-muted text-muted-foreground' };
+
+            const cardBorder = isBroken
+              ? 'border-neon-pink/30'
+              : isSkipped
+                ? 'border-neon-yellow/35'
+                : isVerifiedHeld
+                  ? 'border-neon-green/30'
+                  : 'border-border';
 
             return (
               <Card
                 key={vulnerability.id}
-                className={`bg-card border ${isBroken ? 'border-neon-pink/30' : 'border-neon-green/30'}`}
+                className={`bg-card border ${cardBorder}`}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       {isBroken ? (
                         <XCircle className="w-5 h-5 text-neon-pink flex-shrink-0" />
-                      ) : (
+                      ) : isSkipped ? (
+                        <SkipForward className="w-5 h-5 text-neon-yellow flex-shrink-0" />
+                      ) : isVerifiedHeld ? (
                         <CheckCircle className="w-5 h-5 text-neon-green flex-shrink-0" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       )}
                       <span className="text-foreground">{vulnerability.name}</span>
                     </CardTitle>
-                    <span className={`text-xs uppercase tracking-wider px-2 py-0.5 ${
-                      isBroken ? 'bg-neon-pink/10 text-neon-pink' : 'bg-neon-green/10 text-neon-green'
-                    }`}>
-                      {isBroken ? 'BROKEN' : result ? 'HELD' : 'NOT TESTED'}
+                    <span className={`text-xs uppercase tracking-wider px-2 py-0.5 ${statusBadge.className}`}>
+                      {statusBadge.label}
                     </span>
                   </div>
                 </CardHeader>

@@ -193,6 +193,7 @@ const Game = () => {
     addLevelResult({
       vulnerabilityId: vuln.id,
       broken: false,
+      skipped: true,
       explanation: 'Skipped',
       chatHistory,
     });
