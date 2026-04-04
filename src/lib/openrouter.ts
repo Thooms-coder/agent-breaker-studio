@@ -1,5 +1,5 @@
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'qwen/qwen3-235b-a22b:free';
+const MODEL = 'qwen/qwen3.6-plus:free';
 
 export interface Vulnerability {
   id: string;
