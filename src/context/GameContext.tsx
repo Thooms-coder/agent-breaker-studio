@@ -4,9 +4,11 @@ import { Vulnerability, ChatMessage } from '@/lib/openrouter';
 
 export type GameStep = 'landing' | 'upload' | 'analysis' | 'levelSelect' | 'game' | 'summary';
 
-interface LevelResult {
+export interface LevelResult {
   vulnerabilityId: string;
   broken: boolean;
+  /** True when the player used Skip — does not count as verifying the agent held. */
+  skipped?: boolean;
   explanation: string;
   chatHistory: ChatMessage[];
 }
