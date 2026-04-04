@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGame } from '@/context/GameContext';
+import { useUser } from '@/context/UserContext';
 import { parseAgentCode, readFileContent } from '@/lib/agent-parser';
 import { getPracticeAgent, getPracticeScenario, PRACTICE_AGENT_FILE_NAME } from '@/lib/practice-agent';
 import { Upload as UploadIcon, FileText, ArrowRight, ArrowLeft, X } from 'lucide-react';
@@ -17,6 +18,7 @@ const Upload = () => {
     setLevelResults,
     setStep,
   } = useGame();
+  const { startSession } = useUser();
   const [rawCode, setRawCode] = useState('');
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ReturnType<typeof parseAgentCode> | null>(null);
@@ -51,6 +53,7 @@ const Upload = () => {
       modelConfig: parsed?.modelConfig || '',
       rawCode: rawCode,
     });
+    startSession(fileName || 'Custom Agent');
     setStep('analysis');
     navigate('/analysis');
   };
@@ -70,6 +73,7 @@ const Upload = () => {
     setCurrentLevel(0);
     setLevelResults([]);
     setStep('levelSelect');
+    startSession('Practice Agent');
     navigate('/levels');
   };
 
