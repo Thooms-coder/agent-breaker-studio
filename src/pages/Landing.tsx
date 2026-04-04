@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Zap, Shield, Skull } from 'lucide-react';
+import { Zap, Shield, Skull, User } from 'lucide-react';
 import { useGame } from '@/context/GameContext';
+import { useUser } from '@/context/UserContext';
 import { getPracticeScenario } from '@/lib/practice-agent';
 
 const Landing = () => {
@@ -13,6 +14,7 @@ const Landing = () => {
     setLevelResults,
     setStep,
   } = useGame();
+  const { profile, startSession } = useUser();
 
   const handleStartPractice = () => {
     const scenario = getPracticeScenario();
@@ -21,12 +23,22 @@ const Landing = () => {
     setCurrentLevel(0);
     setLevelResults([]);
     setStep('levelSelect');
+    startSession('Practice Agent');
     navigate('/levels');
   };
 
   return (
     <div className="min-h-screen noise-bg flex flex-col items-center justify-center relative overflow-hidden">
       <div className="scanline-overlay" />
+
+      {/* User indicator */}
+      <button
+        onClick={() => navigate('/profile')}
+        className="absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 border border-neon-green/30 bg-card/50 hover:bg-neon-green/10 transition-colors text-neon-green text-xs uppercase tracking-wider font-mono"
+      >
+        <User className="w-3 h-3" />
+        {profile.username}
+      </button>
 
       {/* Floating punk elements */}
       <div className="absolute top-20 left-10 text-neon-pink text-6xl animate-float opacity-20 select-none">✕</div>

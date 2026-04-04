@@ -1,23 +1,42 @@
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
-import { useEffect } from 'react';
+import { useUser } from '@/context/UserContext';
+import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skull, Shield, CheckCircle, XCircle, RotateCcw, Upload } from 'lucide-react';
+import { Skull, Shield, CheckCircle, XCircle, RotateCcw, Upload, Clock, MessageSquare, Zap, Timer } from 'lucide-react';
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return '<1s';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
 
 const Summary = () => {
   const navigate = useNavigate();
   const { vulnerabilities, levelResults, resetGame } = useGame();
+  const { currentSession, endSession } = useUser();
+  const sessionEnded = useRef(false);
 
   useEffect(() => {
     if (vulnerabilities.length === 0) navigate('/');
   }, [vulnerabilities, navigate]);
 
+  // End and save the session once on mount
+  useEffect(() => {
+    if (currentSession && !sessionEnded.current) {
+      sessionEnded.current = true;
+      endSession();
+    }
+  }, [currentSession, endSession]);
+
   const brokenCount = levelResults.filter(r => r.broken).length;
   const totalCount = vulnerabilities.length;
   const score = totalCount > 0 ? Math.round(((totalCount - brokenCount) / totalCount) * 100) : 0;
 
-  // Skull rating (0-5 skulls, more skulls = more broken = worse)
   const skullRating = totalCount > 0 ? Math.round((brokenCount / totalCount) * 5) : 0;
 
   const getGrade = () => {
@@ -29,6 +48,22 @@ const Summary = () => {
   };
 
   const { grade, color, label } = getGrade();
+
+  // Get session-level stats (from the session that just ended, now stored in profile)
+  // We use currentSession snapshot captured before endSession nulled it
+  const sessionLevels = currentSession?.levels ?? [];
+
+  const totalMessages = sessionLevels.reduce((sum, l) => sum + l.messageCount, 0);
+  const brokenLevels = sessionLevels.filter(l => l.broken && l.timeToBreakMs !== null);
+  const avgMsgsToBreak = brokenLevels.length > 0
+    ? Math.round(brokenLevels.reduce((sum, l) => sum + l.messageCount, 0) / brokenLevels.length * 10) / 10
+    : null;
+  const fastestBreak = brokenLevels.length > 0
+    ? Math.min(...brokenLevels.map(l => l.timeToBreakMs!))
+    : null;
+  const sessionDuration = currentSession
+    ? Date.now() - currentSession.startedAt
+    : null;
 
   return (
     <div className="min-h-screen noise-bg p-4 md:p-8">
@@ -75,11 +110,57 @@ const Summary = () => {
           </CardContent>
         </Card>
 
+        {/* Session Stats */}
+        <Card className="mb-8 bg-card border border-neon-yellow/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-neon-yellow uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4" /> Session Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <MessageSquare className="w-3 h-3 text-neon-green" />
+                </div>
+                <p className="text-foreground text-xl font-bold">{totalMessages}</p>
+                <p className="text-muted-foreground text-xs uppercase">Total Messages</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <MessageSquare className="w-3 h-3 text-neon-pink" />
+                </div>
+                <p className="text-foreground text-xl font-bold">{avgMsgsToBreak ?? '—'}</p>
+                <p className="text-muted-foreground text-xs uppercase">Avg Msgs to Break</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Timer className="w-3 h-3 text-neon-green" />
+                </div>
+                <p className="text-foreground text-xl font-bold">
+                  {fastestBreak !== null ? formatDuration(fastestBreak) : '—'}
+                </p>
+                <p className="text-muted-foreground text-xs uppercase">Fastest Break</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Clock className="w-3 h-3 text-neon-yellow" />
+                </div>
+                <p className="text-foreground text-xl font-bold">
+                  {sessionDuration !== null ? formatDuration(sessionDuration) : '—'}
+                </p>
+                <p className="text-muted-foreground text-xs uppercase">Session Time</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Vulnerability grid */}
         <div className="space-y-4 mb-8">
           {vulnerabilities.map((vuln) => {
             const result = levelResults.find(r => r.vulnerabilityId === vuln.id);
             const isBroken = result?.broken;
+            const levelStat = sessionLevels.find(l => l.vulnerabilityId === vuln.id);
 
             return (
               <Card
@@ -108,6 +189,21 @@ const Summary = () => {
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Category</p>
                     <p className="text-sm text-foreground">{vuln.category.replace('_', ' ')}</p>
                   </div>
+
+                  {/* Per-level stats */}
+                  {levelStat && (
+                    <div className="flex gap-4 text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> {levelStat.messageCount} msgs
+                      </span>
+                      {levelStat.broken && levelStat.timeToBreakMs !== null && (
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {formatDuration(levelStat.timeToBreakMs)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {result?.explanation && result.explanation !== 'Skipped' && (
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">What Happened</p>
@@ -135,6 +231,14 @@ const Summary = () => {
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             Retry Levels
+          </Button>
+          <Button
+            onClick={() => navigate('/profile')}
+            variant="outline"
+            className="border-neon-green text-neon-green hover:bg-neon-green/10 rounded-none"
+          >
+            <Zap className="w-4 h-4 mr-2" />
+            View Profile
           </Button>
           <Button
             onClick={() => { resetGame(); navigate('/'); }}
