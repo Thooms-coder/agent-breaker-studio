@@ -21,7 +21,7 @@ const snarkyMessages = [
 
 const Analysis = () => {
   const navigate = useNavigate();
-  const { parsedAgent, setVulnerabilities, setStep } = useGame();
+  const { parsedAgent, setParsedAgent, setVulnerabilities, setStep } = useGame();
   const [messageIdx, setMessageIdx] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -48,12 +48,18 @@ const Analysis = () => {
         const vulns = await analyzeAgent(
           parsedAgent.systemPrompt,
           parsedAgent.tools,
-          parsedAgent.modelConfig
+          parsedAgent.modelConfig,
+          parsedAgent.rawCode
         );
         if (vulns.length === 0) {
           setError("No significant vulnerabilities detected. Your agent might actually be solid... or we need more context. Try uploading more code.");
           setLoading(false);
           return;
+        }
+        // For codebase uploads, the AI extracts the system prompt — update parsedAgent
+        const extractedPrompt = (vulns as any).__extractedSystemPrompt;
+        if (extractedPrompt && !parsedAgent.systemPrompt) {
+          setParsedAgent({ ...parsedAgent, systemPrompt: extractedPrompt });
         }
         setVulnerabilities(vulns);
         setStep('levelSelect');
@@ -65,7 +71,7 @@ const Analysis = () => {
     };
 
     analyze();
-  }, [parsedAgent, navigate, setVulnerabilities, setStep]);
+  }, [parsedAgent, navigate, setParsedAgent, setVulnerabilities, setStep]);
 
   useEffect(() => {
     const interval = setInterval(() => {
