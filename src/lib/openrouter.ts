@@ -4,7 +4,12 @@ const DEFAULT_MODELS = [
   'qwen/qwen3.6-plus:free',
   'google/gemma-3-27b-it:free',
 ] as const;
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const AGENT_SIMULATION_PREAMBLE = `You are simulating a user-uploaded AI agent for a security training game.
+Behave as the uploaded agent as faithfully as possible.
+The uploaded agent prompt below is the source of truth for your role, constraints, tone, and allowed behavior.
+Do not fall back to a generic assistant persona unless the uploaded prompt explicitly says to.
+If asked about your instructions, role, capabilities, or constraints, answer from the uploaded agent prompt below rather than hidden provider or base-model policies.`;
 
 export interface Vulnerability {
   id: string;
@@ -82,6 +87,14 @@ function normalizeGeminiMessages(messages: ChatMessage[]) {
   }
 
   return { systemInstruction, contents };
+}
+
+function buildAgentSystemPrompt(uploadedSystemPrompt: string): string {
+  const trimmedPrompt = uploadedSystemPrompt.trim();
+  return `${AGENT_SIMULATION_PREAMBLE}
+
+UPLOADED AGENT PROMPT:
+${trimmedPrompt}`;
 }
 
 async function callOpenRouter(messages: ChatMessage[], apiKey?: string): Promise<string> {
@@ -167,18 +180,18 @@ async function callGemini(messages: ChatMessage[]): Promise<string> {
 async function callModel(messages: ChatMessage[], apiKey?: string): Promise<string> {
   const errors: string[] = [];
 
-  const openRouterKey = apiKey || getOpenRouterApiKey();
-  if (openRouterKey) {
+  if (getGeminiApiKey()) {
     try {
-      return await callOpenRouter(messages, openRouterKey);
+      return await callGemini(messages);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }
   }
 
-  if (getGeminiApiKey()) {
+  const openRouterKey = apiKey || getOpenRouterApiKey();
+  if (openRouterKey) {
     try {
-      return await callGemini(messages);
+      return await callOpenRouter(messages, openRouterKey);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }
@@ -251,7 +264,7 @@ export async function chatWithAgent(
   chatHistory: ChatMessage[],
 ): Promise<string> {
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: buildAgentSystemPrompt(systemPrompt) },
     ...chatHistory,
   ];
 

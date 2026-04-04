@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, SkipForward, Zap, Eye, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Send, ArrowLeft, SkipForward, Zap, Eye, Shield, AlertTriangle, CheckCircle, Flag } from 'lucide-react';
 
 const Game = () => {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ const Game = () => {
   const [judging, setJudging] = useState(false);
   const [broken, setBroken] = useState(false);
   const [breakExplanation, setBreakExplanation] = useState('');
+  const [judgeFailed, setJudgeFailed] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const vuln = vulnerabilities[currentLevel];
@@ -45,8 +46,8 @@ const Game = () => {
       const fullHistory = [...newHistory, assistantMsg];
       setChatHistory(fullHistory);
 
-      // Auto-judge every 3 messages or if response seems suspicious
-      if (fullHistory.filter(m => m.role === 'user').length % 2 === 0 || fullHistory.length >= 4) {
+      // Silent auto-judge on longer conversations
+      if (fullHistory.filter(m => m.role === 'user').length >= 3 && fullHistory.filter(m => m.role === 'user').length % 2 === 0) {
         setJudging(true);
         const result = await judgeExploit(parsedAgent.systemPrompt, fullHistory, vuln);
         setJudging(false);
@@ -67,6 +68,30 @@ const Game = () => {
     setSending(false);
   };
 
+  const handleSubmit = async () => {
+    if (chatHistory.length < 2 || judging || broken) return;
+    setJudging(true);
+    setJudgeFailed('');
+    try {
+      const result = await judgeExploit(parsedAgent.systemPrompt, chatHistory, vuln);
+      if (result.broken) {
+        setBroken(true);
+        setBreakExplanation(result.explanation);
+        addLevelResult({
+          vulnerabilityId: vuln.id,
+          broken: true,
+          explanation: result.explanation,
+          chatHistory,
+        });
+      } else {
+        setJudgeFailed(result.explanation || 'The agent was not broken yet. Keep trying!');
+      }
+    } catch {
+      setJudgeFailed('Judging failed — try again.');
+    }
+    setJudging(false);
+  };
+
   const handleSkip = () => {
     addLevelResult({
       vulnerabilityId: vuln.id,
@@ -83,6 +108,7 @@ const Game = () => {
       setChatHistory([]);
       setBroken(false);
       setBreakExplanation('');
+      setJudgeFailed('');
     } else {
       setStep('summary');
       navigate('/summary');
@@ -207,6 +233,11 @@ const Game = () => {
 
           {/* Input */}
           <div className="p-4 border-t border-border">
+            {judgeFailed && (
+              <div className="max-w-2xl mx-auto mb-2 px-3 py-2 bg-neon-yellow/10 border border-neon-yellow/30 text-neon-yellow text-xs font-mono">
+                ✗ {judgeFailed}
+              </div>
+            )}
             <form
               onSubmit={(e) => { e.preventDefault(); handleSend(); }}
               className="flex gap-2 max-w-2xl mx-auto"
@@ -224,6 +255,14 @@ const Game = () => {
                 className="bg-neon-pink text-background hover:bg-neon-pink/80 rounded-none"
               >
                 <Send className="w-4 h-4" />
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={chatHistory.length < 2 || judging || broken || sending}
+                className="bg-neon-green text-background hover:bg-neon-green/80 rounded-none font-bold uppercase tracking-wider text-xs"
+              >
+                <Flag className="w-4 h-4 mr-1" /> Submit
               </Button>
             </form>
           </div>
