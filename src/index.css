@@ -128,6 +128,55 @@
   66% { transform: translate(-50%, -50%) rotate(-12deg); }
 }
 
+@keyframes route-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes level-card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1.02);
+  }
+}
+
+@keyframes level-cleared-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.82);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.36);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.42);
+  }
+}
+
+@keyframes level-cleared-pill {
+  0%, 100% {
+    box-shadow: 0 0 10px hsl(var(--neon-green) / 0.12);
+  }
+  50% {
+    box-shadow: 0 0 18px hsl(var(--neon-green) / 0.3);
+  }
+}
+
+@keyframes remediation-glow {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px hsl(var(--neon-green) / 0.12), 0 0 20px hsl(var(--neon-green) / 0.06);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px hsl(var(--neon-green) / 0.22), 0 0 26px hsl(var(--neon-green) / 0.14);
+  }
+}
+
 .glitch-text {
   position: relative;
   animation: flicker 3s linear infinite;
@@ -207,6 +256,30 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
+}
+
+.route-progress {
+  animation: route-progress 1.9s linear forwards;
+}
+
+.level-card-enter {
+  animation: level-card-enter 220ms cubic-bezier(.2,.8,.2,1);
+}
+
+.level-cleared-badge {
+  animation: level-cleared-pill 1.2s ease-in-out infinite;
+}
+
+.level-cleared-pill {
+  animation: level-cleared-pill 1.2s ease-in-out infinite;
+}
+
+.level-cleared-ring {
+  animation: level-cleared-ring 1.4s ease-out infinite;
+}
+
+.remediation-card {
+  animation: remediation-glow 2.4s ease-in-out infinite;
 }
 
 .redacted {

@@ -1,12 +1,17 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Skull, Lock, CheckCircle, Home } from 'lucide-react';
+import { Skull, Lock, CheckCircle, Home, Shield, Sparkles } from 'lucide-react';
 
 const ROW_HEIGHT = 140;
 const NODE_SIZE = 80;
 
 type Point = { left: number; top: number };
+type LevelSelectNavState = {
+  focusLevel?: number;
+  autoAdvanceTo?: number;
+  justCompletedId?: string;
+};
 
 function buildConnectorPath(points: Point[]) {
   if (points.length < 2) return '';
@@ -29,13 +34,17 @@ function buildConnectorPath(points: Point[]) {
 }
 
 const LevelSelect = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { vulnerabilities, setCurrentLevel, setStep, levelResults } = useGame();
   const [selected, setSelected] = useState(0);
+  const [recentlyCompletedId, setRecentlyCompletedId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [nodeCenters, setNodeCenters] = useState<Point[]>([]);
   const [skullPosition, setSkullPosition] = useState<Point | null>(null);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+  const completionPulseTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (vulnerabilities.length === 0) navigate('/upload');
@@ -51,13 +60,21 @@ const LevelSelect = () => {
     navigate('/game');
   }, [navigate, setCurrentLevel, setStep]);
 
+  const clearAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimerRef.current !== null) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, []);
+
   const handleActivateLevel = useCallback((idx: number) => {
+    clearAutoAdvance();
     if (idx === selected) {
       handleSelectLevel(idx);
       return;
     }
     setSelected(idx);
-  }, [handleSelectLevel, selected]);
+  }, [clearAutoAdvance, handleSelectLevel, selected]);
 
   const updateLayout = useCallback(() => {
     const container = containerRef.current;
@@ -102,7 +119,49 @@ const LevelSelect = () => {
     };
   }, [updateLayout]);
 
+  useEffect(() => {
+    const navState = location.state as LevelSelectNavState | null;
+    if (!navState) return;
+
+    const clampedFocus = typeof navState.focusLevel === 'number'
+      ? Math.max(0, Math.min(vulnerabilities.length - 1, navState.focusLevel))
+      : null;
+    const clampedAutoAdvance = typeof navState.autoAdvanceTo === 'number'
+      ? Math.max(0, Math.min(vulnerabilities.length - 1, navState.autoAdvanceTo))
+      : null;
+
+    if (clampedFocus !== null) {
+      setSelected(clampedFocus);
+    }
+
+    if (navState.justCompletedId) {
+      setRecentlyCompletedId(navState.justCompletedId);
+      if (completionPulseTimerRef.current !== null) {
+        window.clearTimeout(completionPulseTimerRef.current);
+      }
+      completionPulseTimerRef.current = window.setTimeout(() => {
+        setRecentlyCompletedId(null);
+        completionPulseTimerRef.current = null;
+      }, 3200);
+    }
+
+    if (
+      clampedFocus !== null
+      && clampedAutoAdvance !== null
+      && clampedAutoAdvance !== clampedFocus
+    ) {
+      clearAutoAdvance();
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        setSelected(clampedAutoAdvance);
+        autoAdvanceTimerRef.current = null;
+      }, 1250);
+    }
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [clearAutoAdvance, location.pathname, location.state, navigate, vulnerabilities.length]);
+
   const handleKey = useCallback((event: KeyboardEvent) => {
+    clearAutoAdvance();
     if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
       setSelected((current) => Math.max(0, current - 1));
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
@@ -110,12 +169,23 @@ const LevelSelect = () => {
     } else if (event.key === 'Enter') {
       handleSelectLevel(selected);
     }
-  }, [handleSelectLevel, selected, vulnerabilities.length]);
+  }, [clearAutoAdvance, handleSelectLevel, selected, vulnerabilities.length]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [handleKey]);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current !== null) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+      if (completionPulseTimerRef.current !== null) {
+        window.clearTimeout(completionPulseTimerRef.current);
+      }
+    };
+  }, []);
 
   const allDone = vulnerabilities.length > 0 && levelResults.length === vulnerabilities.length;
   const total = vulnerabilities.length;
@@ -179,6 +249,7 @@ const LevelSelect = () => {
               const isAttempted = !!result;
               const isSelected = idx === selected;
               const isEven = idx % 2 === 0;
+              const isRecentlyCompleted = recentlyCompletedId === vuln.id;
 
               const nodeColor = isBroken
                 ? 'border-neon-green bg-neon-green/20'
@@ -204,6 +275,11 @@ const LevelSelect = () => {
                 ? 'border-yellow-400/40'
                 : 'border-border';
 
+              const handlePreview = () => {
+                clearAutoAdvance();
+                setSelected(idx);
+              };
+
               return (
                 <div
                   key={vuln.id}
@@ -215,7 +291,7 @@ const LevelSelect = () => {
                       nodeRefs.current[idx] = element;
                     }}
                     onClick={() => handleActivateLevel(idx)}
-                    onMouseEnter={() => setSelected(idx)}
+                    onMouseEnter={handlePreview}
                     className={`relative flex-shrink-0 rounded-full border-4 flex items-center justify-center transition-all hover:scale-110 ${
                       isSelected ? 'scale-110' : ''
                     } ${nodeColor}`}
@@ -233,38 +309,80 @@ const LevelSelect = () => {
                       <div className="w-4 h-4 rounded-full border border-current text-neon-pink opacity-65" />
                     )}
                     <span
-                      className={`absolute -top-3 -right-3 w-9 h-9 rounded-full bg-background border-2 flex items-center justify-center text-base font-black ${textColor}`}
+                      className={`absolute -top-3 -right-3 w-9 h-9 rounded-full bg-background border-2 flex items-center justify-center text-base font-black ${textColor} ${
+                        isRecentlyCompleted ? 'level-cleared-badge' : ''
+                      }`}
                       style={{ borderColor: 'currentColor', boxShadow: glowColor }}
                     >
                       {idx + 1}
                     </span>
+                    {isRecentlyCompleted && (
+                      <div className="absolute inset-0 rounded-full border border-neon-green/60 level-cleared-ring" />
+                    )}
                   </button>
 
                   <div className="flex-1 flex">
                     {isSelected ? (
                       <button
                         onClick={() => handleActivateLevel(idx)}
-                        onMouseEnter={() => setSelected(idx)}
-                        className={`w-full max-w-[360px] text-left p-4 border-2 transition-all bg-card scale-[1.02] ${cardBorder}`}
+                        onMouseEnter={handlePreview}
+                        className={`w-full max-w-[360px] text-left p-4 border-2 transition-all bg-card scale-[1.02] level-card-enter ${
+                          isRecentlyCompleted ? 'border-neon-green/60' : cardBorder
+                        }`}
                         style={{
-                          boxShadow: `${glowColor}, 0 0 0 1px rgba(255,45,120,0.3)`,
+                          boxShadow: isRecentlyCompleted
+                            ? '0 0 0 1px rgba(0,255,128,0.3), 0 0 32px rgba(0,255,128,0.16)'
+                            : `${glowColor}, 0 0 0 1px rgba(255,45,120,0.3)`,
                         }}
                       >
-                        <p className={`text-xs uppercase tracking-widest mb-1 font-bold ${textColor}`}>
-                          {vuln.category.replace('_', ' ')}
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className={`text-xs uppercase tracking-widest mb-1 font-bold ${textColor}`}>
+                              {vuln.category.replace('_', ' ')}
+                            </p>
+                            <p className="font-bold text-foreground">{vuln.name}</p>
+                          </div>
+                          {isBroken ? (
+                            <span className="inline-flex items-center gap-1 text-xs bg-neon-green/10 text-neon-green px-2 py-1 uppercase tracking-wider font-bold level-cleared-pill">
+                              <CheckCircle className="w-3 h-3" /> Cleared
+                            </span>
+                          ) : (
+                            <span className="inline-block text-xs bg-neon-pink/10 text-neon-pink px-2 py-1 uppercase tracking-wider font-bold">
+                              ▶ Selected
+                            </span>
+                          )}
+                        </div>
+
+                        <p className={`mt-2 text-xs ${isBroken ? 'text-neon-pink/45 line-through' : 'text-muted-foreground line-clamp-2'}`}>
+                          {vuln.description}
                         </p>
-                        <p className="font-bold text-foreground">{vuln.name}</p>
-                        <p className="text-muted-foreground text-xs mt-1 line-clamp-2">{vuln.description}</p>
-                        {isBroken && (
-                          <span className="inline-block mt-2 text-xs bg-neon-green/10 text-neon-green px-2 py-0.5 uppercase tracking-wider font-bold">
-                            ✓ Broken
-                          </span>
-                        )}
-                        {!isBroken && (
-                          <span className="inline-block mt-2 text-xs bg-neon-pink/10 text-neon-pink px-2 py-0.5 uppercase tracking-wider font-bold">
-                            ▶ Selected
-                          </span>
-                        )}
+
+                        <div className="mt-3 grid gap-2">
+                          <div className="rounded-sm border border-neon-yellow/20 bg-neon-yellow/5 p-2">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-neon-yellow mb-1">Break Goal</div>
+                            <p className="text-xs text-foreground line-clamp-3">{vuln.successCriteria}</p>
+                          </div>
+                          <div className="rounded-sm border border-neon-pink/20 bg-neon-pink/5 p-2">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-neon-pink mb-1">Impact</div>
+                            <p className="text-xs text-muted-foreground line-clamp-3">{vuln.impact}</p>
+                          </div>
+                        </div>
+
+                        {isBroken ? (
+                          <div className="mt-4 rounded-sm border border-neon-green/25 bg-neon-green/6 p-3 remediation-card">
+                            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.28em] text-neon-green mb-2">
+                              <Shield className="w-3.5 h-3.5" />
+                              Proposed Fix
+                            </div>
+                            <p className="text-sm text-foreground">
+                              {vuln.remediation}
+                            </p>
+                            <div className="mt-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-neon-green/75">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              Guardrail patched
+                            </div>
+                          </div>
+                        ) : null}
                       </button>
                     ) : (
                       <div className="hidden md:block w-full max-w-[360px]" />

@@ -28,9 +28,8 @@ const Summary = () => {
 
   useEffect(() => {
     if (vulnerabilities.length === 0) navigate('/');
-  }, [vulnerabilities, navigate]);
+  }, [navigate, vulnerabilities]);
 
-  // End and save the session once on mount
   useEffect(() => {
     if (currentSession && !sessionEnded.current) {
       sessionEnded.current = true;
@@ -68,7 +67,6 @@ const Summary = () => {
   const brokenCount = levelResults.filter(r => r.broken).length;
   const totalCount = vulnerabilities.length;
   const score = totalCount > 0 ? Math.round(((totalCount - brokenCount) / totalCount) * 100) : 0;
-
   const skullRating = totalCount > 0 ? Math.round((brokenCount / totalCount) * 5) : 0;
 
   const getGrade = () => {
@@ -80,28 +78,21 @@ const Summary = () => {
   };
 
   const { grade, color, label } = getGrade();
-
-  // Get session-level stats (from the session that just ended, now stored in profile)
-  // We use currentSession snapshot captured before endSession nulled it
   const sessionLevels = currentSession?.levels ?? [];
-
-  const totalMessages = sessionLevels.reduce((sum, l) => sum + l.messageCount, 0);
-  const brokenLevels = sessionLevels.filter(l => l.broken && l.timeToBreakMs !== null);
+  const totalMessages = sessionLevels.reduce((sum, level) => sum + level.messageCount, 0);
+  const brokenLevels = sessionLevels.filter((level) => level.broken && level.timeToBreakMs !== null);
   const avgMsgsToBreak = brokenLevels.length > 0
-    ? Math.round(brokenLevels.reduce((sum, l) => sum + l.messageCount, 0) / brokenLevels.length * 10) / 10
+    ? Math.round((brokenLevels.reduce((sum, level) => sum + level.messageCount, 0) / brokenLevels.length) * 10) / 10
     : null;
   const fastestBreak = brokenLevels.length > 0
-    ? Math.min(...brokenLevels.map(l => l.timeToBreakMs!))
+    ? Math.min(...brokenLevels.map((level) => level.timeToBreakMs!))
     : null;
-  const sessionDuration = currentSession
-    ? Date.now() - currentSession.startedAt
-    : null;
+  const sessionDuration = currentSession ? Date.now() - currentSession.startedAt : null;
 
   return (
     <div className="min-h-screen noise-bg p-4 md:p-8">
       <div className="scanline-overlay" />
       <div className="max-w-3xl mx-auto relative z-10">
-        {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-neon-pink tracking-tighter uppercase mb-2 glitch-text" data-text="REPORT CARD">
             REPORT CARD
@@ -109,18 +100,16 @@ const Summary = () => {
           <p className="text-muted-foreground text-sm">Here's how your agent held up</p>
         </div>
 
-        {/* Score card */}
         <Card className="mb-8 bg-card neon-border text-center py-8 border-0">
           <CardContent>
             <div className={`text-8xl font-bold ${color} mb-2`}>{grade}</div>
             <p className={`text-sm ${color} uppercase tracking-widest mb-4`}>{label}</p>
 
-            {/* Skull rating */}
             <div className="flex justify-center gap-1 mb-4">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, index) => (
                 <Skull
-                  key={i}
-                  className={`w-6 h-6 ${i < skullRating ? 'text-neon-pink' : 'text-muted'}`}
+                  key={index}
+                  className={`w-6 h-6 ${index < skullRating ? 'text-neon-pink' : 'text-muted'}`}
                 />
               ))}
             </div>
@@ -142,7 +131,6 @@ const Summary = () => {
           </CardContent>
         </Card>
 
-        {/* Session Stats */}
         <Card className="mb-8 bg-card border border-neon-yellow/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-neon-yellow uppercase tracking-wider flex items-center gap-2">
@@ -187,16 +175,15 @@ const Summary = () => {
           </CardContent>
         </Card>
 
-        {/* Vulnerability grid */}
         <div className="space-y-4 mb-8">
-          {vulnerabilities.map((vuln) => {
-            const result = levelResults.find(r => r.vulnerabilityId === vuln.id);
+          {vulnerabilities.map((vulnerability) => {
+            const result = levelResults.find((entry) => entry.vulnerabilityId === vulnerability.id);
             const isBroken = result?.broken;
-            const levelStat = sessionLevels.find(l => l.vulnerabilityId === vuln.id);
+            const levelStat = sessionLevels.find((level) => level.vulnerabilityId === vulnerability.id);
 
             return (
               <Card
-                key={vuln.id}
+                key={vulnerability.id}
                 className={`bg-card border ${isBroken ? 'border-neon-pink/30' : 'border-neon-green/30'}`}
               >
                 <CardHeader className="pb-2">
@@ -207,7 +194,7 @@ const Summary = () => {
                       ) : (
                         <CheckCircle className="w-5 h-5 text-neon-green flex-shrink-0" />
                       )}
-                      <span className="text-foreground">{vuln.name}</span>
+                      <span className="text-foreground">{vulnerability.name}</span>
                     </CardTitle>
                     <span className={`text-xs uppercase tracking-wider px-2 py-0.5 ${
                       isBroken ? 'bg-neon-pink/10 text-neon-pink' : 'bg-neon-green/10 text-neon-green'
@@ -219,10 +206,9 @@ const Summary = () => {
                 <CardContent className="space-y-3">
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Category</p>
-                    <p className="text-sm text-foreground">{vuln.category.replace('_', ' ')}</p>
+                    <p className="text-sm text-foreground">{vulnerability.category.replace('_', ' ')}</p>
                   </div>
 
-                  {/* Per-level stats */}
                   {levelStat && (
                     <div className="flex gap-4 text-xs">
                       <span className="text-muted-foreground flex items-center gap-1">
@@ -236,17 +222,28 @@ const Summary = () => {
                     </div>
                   )}
 
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Break Goal</p>
+                    <p className="text-sm text-foreground">{vulnerability.successCriteria}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Expected Impact</p>
+                    <p className="text-sm text-muted-foreground">{vulnerability.impact}</p>
+                  </div>
+
                   {result?.explanation && result.explanation !== 'Skipped' && (
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">What Happened</p>
                       <p className="text-sm text-foreground">{result.explanation}</p>
                     </div>
                   )}
+
                   <div className="pt-2 border-t border-border">
                     <p className="text-xs text-neon-yellow uppercase tracking-wider mb-1 flex items-center gap-1">
                       <Shield className="w-3 h-3" /> Remediation
                     </p>
-                    <p className="text-sm text-muted-foreground">{vuln.remediation}</p>
+                    <p className="text-sm text-muted-foreground">{vulnerability.remediation}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -254,7 +251,6 @@ const Summary = () => {
           })}
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {isDailyChallenge ? (
             <Button
