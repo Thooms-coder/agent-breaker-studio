@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
 import { analyzeAgent } from '@/lib/openrouter';
+import { getPracticeVulnerabilities, isPracticeAgent } from '@/lib/practice-agent';
 import { Skull } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -37,6 +38,13 @@ const Analysis = () => {
 
     const analyze = async () => {
       try {
+        if (isPracticeAgent(parsedAgent)) {
+          setVulnerabilities(getPracticeVulnerabilities());
+          setStep('levelSelect');
+          navigate('/levels');
+          return;
+        }
+
         const vulns = await analyzeAgent(
           parsedAgent.systemPrompt,
           parsedAgent.tools,
