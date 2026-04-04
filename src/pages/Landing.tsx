@@ -114,9 +114,13 @@ const Landing = () => {
       </div>
 
       {/* Bottom tape strip */}
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-neon-yellow/10 flex items-center overflow-hidden">
-        <div className="animate-[scroll_20s_linear_infinite] whitespace-nowrap text-neon-yellow/40 text-xs tracking-widest uppercase">
-          {Array(10).fill('⚠ NO AGENT IS SAFE ⚠ BREAK THE RULES ⚠ RED TEAM EVERYTHING ⚠ ').join('')}
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-neon-yellow/10 overflow-hidden flex items-center">
+        <div className="flex whitespace-nowrap">
+          <div className="animate-[ticker-scroll_200s_linear_infinite] flex items-center">
+            <span className="mx-6 text-neon-yellow text-xs tracking-widest uppercase opacity-80 leading-none">
+              {"⚠ NO AGENT IS SAFE ⚠ BREAK THE RULES ⚠ RED TEAM EVERYTHING ⚠ ".repeat(20)}
+            </span>
+          </div>
         </div>
       </div>
     </div>
