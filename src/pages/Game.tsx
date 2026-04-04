@@ -258,6 +258,7 @@ const Game = () => {
                   type="button"
                   onClick={handleSubmit}
                   disabled={chatHistory.length < 2 || judging || broken || sending}
+                  className="bg-neon-green text-background hover:bg-neon-green/80 font-bold uppercase tracking-wider text-xs"
                 >
                   <Flag className="w-4 h-4 mr-1" /> Submit
                 </Button>
