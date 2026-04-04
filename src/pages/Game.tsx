@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/context/GameContext';
 import { chatWithAgent, judgeExploit, ChatMessage } from '@/lib/openrouter';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, SkipForward, Zap, Eye, Shield, AlertTriangle, CheckCircle, Flag } from 'lucide-react';
+import { Send, ArrowLeft, SkipForward, Zap, Eye, Shield, AlertTriangle, CheckCircle, Flag, X } from 'lucide-react';
 
 const Game = () => {
   const navigate = useNavigate();
@@ -34,6 +34,7 @@ const Game = () => {
 
   const handleSend = async () => {
     if (!input.trim() || sending) return;
+    setJudgeFailed('');
     const userMsg: ChatMessage = { role: 'user', content: input };
     const newHistory = [...chatHistory, userMsg];
     setChatHistory(newHistory);
@@ -234,36 +235,61 @@ const Game = () => {
           {/* Input */}
           <div className="p-4 border-t border-border">
             {judgeFailed && (
-              <div className="max-w-2xl mx-auto mb-2 px-3 py-2 bg-neon-yellow/10 border border-neon-yellow/30 text-neon-yellow text-xs font-mono">
-                ✗ {judgeFailed}
+              <div className="max-w-2xl mx-auto mb-3 flex gap-2 rounded-sm border border-neon-yellow/40 bg-neon-yellow/10 px-3 py-2.5 pr-2 text-neon-yellow">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-neon-yellow" aria-hidden />
+                <p className="min-w-0 flex-1 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                  {judgeFailed}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-sm text-neon-yellow hover:bg-neon-yellow/20 hover:text-neon-yellow"
+                  onClick={() => setJudgeFailed('')}
+                  aria-label="Dismiss feedback"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             )}
             <form
               onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-              className="flex gap-2 max-w-2xl mx-auto"
+              className="mx-auto flex max-w-2xl flex-col gap-2"
             >
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your attack..."
-                disabled={sending || broken}
-                className="bg-muted border-border font-mono text-sm flex-1"
-              />
-              <Button
-                type="submit"
-                disabled={sending || broken || !input.trim()}
-                className="bg-neon-pink text-background hover:bg-neon-pink/80 rounded-none"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={chatHistory.length < 2 || judging || broken || sending}
-                className="bg-neon-green text-background hover:bg-neon-green/80 rounded-none font-bold uppercase tracking-wider text-xs"
-              >
-                <Flag className="w-4 h-4 mr-1" /> Submit
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      if (!sending && !broken && input.trim()) void handleSend();
+                    }
+                  }}
+                  placeholder="Type your attack... (⌘/Ctrl+Enter to send)"
+                  disabled={sending || broken}
+                  rows={5}
+                  className="min-h-[140px] max-h-[min(50vh,320px)] resize-y bg-muted border-border font-mono text-sm sm:min-w-0 sm:flex-1"
+                />
+                <div className="flex shrink-0 gap-2 sm:flex-col">
+                  <Button
+                    type="submit"
+                    disabled={sending || broken || !input.trim()}
+                    className="bg-neon-pink text-background hover:bg-neon-pink/80 rounded-none sm:w-11 sm:px-0"
+                    title="Send message"
+                  >
+                    <Send className="h-4 w-4 sm:mx-auto" />
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={chatHistory.length < 2 || judging || broken || sending}
+                    className="rounded-none bg-neon-green font-bold uppercase tracking-wider text-background hover:bg-neon-green/80 text-xs"
+                  >
+                    <Flag className="mr-1 h-4 w-4" /> Submit
+                  </Button>
+                </div>
+              </div>
             </form>
           </div>
         </div>
