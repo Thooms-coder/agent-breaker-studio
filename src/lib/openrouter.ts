@@ -21,7 +21,7 @@ export interface ChatMessage {
 }
 
 function getApiKey(): string {
-  return localStorage.getItem('openrouter_api_key') || '';
+  return localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY || '';
 }
 
 async function callOpenRouter(messages: ChatMessage[], apiKey?: string): Promise<string> {
