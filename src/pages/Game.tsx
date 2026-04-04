@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, SkipForward, Zap, Eye, AlertTriangle } from 'lucide-react';
+import { Send, ArrowLeft, SkipForward, Zap, Eye, Flag } from 'lucide-react';
 
 const Game = () => {
   const navigate = useNavigate();
@@ -17,7 +17,8 @@ const Game = () => {
   const [sending, setSending] = useState(false);
   const [judging, setJudging] = useState(false);
   const [broken, setBroken] = useState(false);
-
+  const [breakExplanation, setBreakExplanation] = useState('');
+  const [judgeFailed, setJudgeFailed] = useState('');
   const [showIntel, setShowIntel] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -50,7 +51,10 @@ const Game = () => {
 
       setChatHistory(fullHistory);
 
-      if (fullHistory.length >= 4) {
+      if (
+        fullHistory.filter(m => m.role === 'user').length >= 3 &&
+        fullHistory.filter(m => m.role === 'user').length % 2 === 0
+      ) {
         setJudging(true);
         const result = await judgeExploit(parsedAgent.systemPrompt, fullHistory, vuln);
         setJudging(false);
@@ -73,6 +77,34 @@ const Game = () => {
     setSending(false);
   };
 
+  const handleSubmit = async () => {
+    if (chatHistory.length < 2 || judging || broken) return;
+    setJudging(true);
+    setJudgeFailed('');
+
+    try {
+      const result = await judgeExploit(parsedAgent.systemPrompt, chatHistory, vuln);
+
+      if (result.broken) {
+        setBroken(true);
+        setBreakExplanation(result.explanation);
+
+        addLevelResult({
+          vulnerabilityId: vuln.id,
+          broken: true,
+          explanation: result.explanation,
+          chatHistory,
+        });
+      } else {
+        setJudgeFailed(result.explanation || 'The agent was not broken yet. Keep trying!');
+      }
+    } catch {
+      setJudgeFailed('Judging failed — try again.');
+    }
+
+    setJudging(false);
+  };
+
   const handleSkip = () => {
     addLevelResult({
       vulnerabilityId: vuln.id,
@@ -88,6 +120,8 @@ const Game = () => {
       setCurrentLevel(currentLevel + 1);
       setChatHistory([]);
       setBroken(false);
+      setBreakExplanation('');
+      setJudgeFailed('');
     } else {
       setStep('summary');
       navigate('/summary');
@@ -155,16 +189,28 @@ const Game = () => {
             </div>
           </ScrollArea>
 
-          {/* STICKY INPUT */}
+          {/* STICKY INPUT ONLY */}
           <div className="sticky bottom-0 w-full bg-background/95 backdrop-blur border-t border-border z-20">
             <div className="p-4 max-w-2xl mx-auto">
-              <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
+
+              {judgeFailed && (
+                <div className="mb-2 px-3 py-2 bg-neon-yellow/10 border border-neon-yellow/30 text-neon-yellow text-xs font-mono">
+                  ✗ {judgeFailed}
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                className="flex gap-2"
+              >
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Type your attack..."
+                  disabled={sending || broken}
                   className="bg-muted border-border font-mono text-sm flex-1"
                 />
+
                 <Button
                   type="submit"
                   disabled={sending || broken || !input.trim()}
@@ -172,13 +218,22 @@ const Game = () => {
                 >
                   <Send className="w-4 h-4" />
                 </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={chatHistory.length < 2 || judging || broken || sending}
+                  className="bg-neon-green text-background font-bold uppercase tracking-wider text-xs"
+                >
+                  <Flag className="w-4 h-4 mr-1" /> Submit
+                </Button>
               </form>
             </div>
           </div>
 
         </div>
 
-        {/* INTEL PANEL */}
+        {/* INTEL PANEL (unchanged) */}
         <div className="w-full md:w-80 lg:w-96 border-t md:border-t-0 bg-card/50 overflow-y-auto">
           <div className="p-4 space-y-4">
 
@@ -200,9 +255,7 @@ const Game = () => {
             <Card>
               <CardHeader><CardTitle className="text-xs uppercase">Severity</CardTitle></CardHeader>
               <CardContent>
-                <span className="font-bold text-neon-pink">
-                  {vuln.severity}
-                </span>
+                <span className="font-bold text-neon-pink">{vuln.severity}</span>
               </CardContent>
             </Card>
 
@@ -230,12 +283,9 @@ const Game = () => {
               </CardContent>
             </Card>
 
-            {/* COMBINED INTEL */}
             <Card className="neon-border-yellow border-0">
               <CardHeader className="flex justify-between">
-                <CardTitle className="text-xs uppercase text-neon-yellow">
-                  Intel
-                </CardTitle>
+                <CardTitle className="text-xs uppercase text-neon-yellow">Intel</CardTitle>
                 <Button size="sm" variant="ghost" onClick={() => setShowIntel(!showIntel)}>
                   {showIntel ? "Hide" : "Reveal"}
                 </Button>
@@ -243,7 +293,6 @@ const Game = () => {
 
               {showIntel && (
                 <CardContent className="space-y-3">
-
                   <div>
                     <p className="text-xs uppercase text-neon-yellow/70">Hint</p>
                     <p className="text-sm italic text-neon-yellow/80">{vuln.hint}</p>
@@ -253,7 +302,6 @@ const Game = () => {
                     <p className="text-xs uppercase text-neon-green/70">Strategy</p>
                     <p className="text-sm text-muted-foreground">{vuln.exploitGuidance}</p>
                   </div>
-
                 </CardContent>
               )}
             </Card>

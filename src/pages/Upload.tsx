@@ -5,11 +5,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGame } from '@/context/GameContext';
 import { parseAgentCode, readFileContent } from '@/lib/agent-parser';
+import { getPracticeAgent, getPracticeScenario, PRACTICE_AGENT_FILE_NAME } from '@/lib/practice-agent';
 import { Upload as UploadIcon, FileText, ArrowRight, ArrowLeft, X } from 'lucide-react';
 
 const Upload = () => {
   const navigate = useNavigate();
-  const { setParsedAgent, setStep } = useGame();
+  const {
+    setParsedAgent,
+    setVulnerabilities,
+    setCurrentLevel,
+    setLevelResults,
+    setStep,
+  } = useGame();
   const [rawCode, setRawCode] = useState('');
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ReturnType<typeof parseAgentCode> | null>(null);
@@ -48,6 +55,24 @@ const Upload = () => {
     navigate('/analysis');
   };
 
+  const handleLoadPracticeAgent = () => {
+    const practiceAgent = getPracticeAgent();
+    setFileName(PRACTICE_AGENT_FILE_NAME);
+    setRawCode(practiceAgent.rawCode);
+    setParsed(practiceAgent);
+    setEditedPrompt(practiceAgent.systemPrompt);
+  };
+
+  const handleStartPractice = () => {
+    const scenario = getPracticeScenario();
+    setParsedAgent(scenario.parsedAgent);
+    setVulnerabilities(scenario.vulnerabilities);
+    setCurrentLevel(0);
+    setLevelResults([]);
+    setStep('levelSelect');
+    navigate('/levels');
+  };
+
   return (
     <div className="min-h-screen noise-bg p-4 md:p-8">
       <div className="scanline-overlay" />
@@ -65,6 +90,33 @@ const Upload = () => {
           <h1 className="text-2xl font-bold text-neon-pink tracking-wider uppercase">Upload Agent</h1>
           <div className="w-20" />
         </div>
+
+        <Card className="mb-6 bg-card border border-neon-green/30 rounded-none">
+          <CardContent className="pt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-neon-green text-xs uppercase tracking-[0.25em] mb-2">Quick Start</p>
+              <h2 className="text-xl font-bold uppercase tracking-wide">Practice Agent</h2>
+              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                Load a deliberately weak demo bot or jump straight into a longer, easy practice run with curated levels.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={handleLoadPracticeAgent}
+                variant="outline"
+                className="border-neon-yellow text-neon-yellow hover:bg-neon-yellow/10 rounded-none"
+              >
+                Load Example Agent
+              </Button>
+              <Button
+                onClick={handleStartPractice}
+                className="bg-neon-green text-background hover:bg-neon-green/80 font-bold uppercase tracking-wider rounded-none"
+              >
+                Start Practice Run
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Input */}

@@ -1,9 +1,28 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Zap, Shield, Skull } from 'lucide-react';
+import { useGame } from '@/context/GameContext';
+import { getPracticeScenario } from '@/lib/practice-agent';
 
 const Landing = () => {
   const navigate = useNavigate();
+  const {
+    setParsedAgent,
+    setVulnerabilities,
+    setCurrentLevel,
+    setLevelResults,
+    setStep,
+  } = useGame();
+
+  const handleStartPractice = () => {
+    const scenario = getPracticeScenario();
+    setParsedAgent(scenario.parsedAgent);
+    setVulnerabilities(scenario.vulnerabilities);
+    setCurrentLevel(0);
+    setLevelResults([]);
+    setStep('levelSelect');
+    navigate('/levels');
+  };
 
   return (
     <div className="min-h-screen noise-bg flex flex-col items-center justify-center relative overflow-hidden">
@@ -40,14 +59,29 @@ const Landing = () => {
         </p>
 
         {/* CTA */}
-        <Button
-          onClick={() => navigate('/upload')}
-          className="relative bg-neon-pink text-background hover:bg-neon-pink/80 text-lg px-10 py-6 font-bold tracking-wider uppercase animate-pulse-neon border-0 rounded-none"
-          size="lg"
-        >
-          <Skull className="w-5 h-5 mr-2" />
-          Upload Your Agent
-        </Button>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Button
+            onClick={() => navigate('/upload')}
+            className="relative bg-neon-pink text-background hover:bg-neon-pink/80 text-lg px-10 py-6 font-bold tracking-wider uppercase animate-pulse-neon border-0 rounded-none"
+            size="lg"
+          >
+            <Skull className="w-5 h-5 mr-2" />
+            Upload Your Agent
+          </Button>
+          <Button
+            onClick={handleStartPractice}
+            variant="outline"
+            className="border-neon-green text-neon-green hover:bg-neon-green/10 text-lg px-10 py-6 font-bold tracking-wider uppercase rounded-none"
+            size="lg"
+          >
+            <Zap className="w-5 h-5 mr-2" />
+            Try Practice Agent
+          </Button>
+        </div>
+
+        <p className="text-muted-foreground text-xs md:text-sm mt-4 uppercase tracking-[0.2em]">
+          Includes an easy built-in bot and a longer practice ladder
+        </p>
 
         {/* Feature pills */}
         <div className="flex flex-wrap justify-center gap-4 mt-16">
