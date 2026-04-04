@@ -290,7 +290,7 @@ const LevelSelect = () => {
                 <div
                   key={vuln.id}
                   className={`flex items-center gap-6 ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'}`}
-                  style={{ height: ROW_HEIGHT }}
+                  style={{ minHeight: ROW_HEIGHT }}
                 >
                   <button
                     ref={(element) => {
@@ -435,69 +435,71 @@ const LevelSelect = () => {
     </div>
 
     {allDone && (
-      <div className="completion-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/96 backdrop-blur-sm">
+      <div className="completion-overlay fixed inset-0 z-50 overflow-y-auto bg-background/96 backdrop-blur-sm">
         <div className="scanline-overlay" />
-        <div className="relative z-10 text-center px-6 max-w-xl mx-auto w-full">
+        <div className="relative z-10 flex min-h-full items-center justify-center px-4 py-8">
+          <div className="w-full max-w-xl text-center">
 
-          <div className="completion-badge-pop flex justify-center mb-6">
+            <div className="completion-badge-pop flex justify-center mb-4">
+              <div
+                className="relative flex items-center justify-center w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-neon-green bg-neon-green/10"
+                style={{ boxShadow: '0 0 40px rgba(0,255,128,0.4), 0 0 80px rgba(0,255,128,0.15)' }}
+              >
+                <Trophy className="w-10 h-10 md:w-14 md:h-14 text-neon-green" />
+              </div>
+            </div>
+
+            <h1
+              className="text-4xl md:text-6xl font-bold text-neon-green tracking-tighter uppercase mb-2 glitch-text"
+              data-text="SYSTEM BREACHED"
+            >
+              SYSTEM BREACHED
+            </h1>
+
             <div
-              className="relative flex items-center justify-center w-28 h-28 rounded-full border-4 border-neon-green bg-neon-green/10"
-              style={{ boxShadow: '0 0 40px rgba(0,255,128,0.4), 0 0 80px rgba(0,255,128,0.15)' }}
-            >
-              <Trophy className="w-14 h-14 text-neon-green" />
+              className="completion-line h-px bg-neon-green/50 mx-auto mb-4"
+              style={{ maxWidth: '320px', boxShadow: '0 0 8px rgba(0,255,128,0.4)' }}
+            />
+
+            <p className="text-muted-foreground uppercase tracking-[0.2em] text-xs mb-6">
+              All {total} {total === 1 ? 'vulnerability' : 'vulnerabilities'} exploited — agent compromised
+            </p>
+
+            <div className="grid grid-cols-3 gap-3 mb-6 border border-neon-green/20 bg-neon-green/5 p-4">
+              <div>
+                <p className="text-2xl md:text-3xl font-bold text-neon-green">{total}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Levels</p>
+              </div>
+              <div>
+                <p className="text-2xl md:text-3xl font-bold text-neon-green">{brokenCount}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Broken</p>
+              </div>
+              <div>
+                <p className="text-2xl md:text-3xl font-bold text-neon-yellow">
+                  {total > 0 ? Math.round((brokenCount / total) * 100) : 0}%
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Success</p>
+              </div>
             </div>
-          </div>
 
-          <h1
-            className="text-5xl md:text-6xl font-bold text-neon-green tracking-tighter uppercase mb-2 glitch-text"
-            data-text="SYSTEM BREACHED"
-          >
-            SYSTEM BREACHED
-          </h1>
-
-          <div
-            className="completion-line h-px bg-neon-green/50 mx-auto mb-6"
-            style={{ maxWidth: '320px', boxShadow: '0 0 8px rgba(0,255,128,0.4)' }}
-          />
-
-          <p className="text-muted-foreground uppercase tracking-[0.2em] text-xs mb-10">
-            All {total} {total === 1 ? 'vulnerability' : 'vulnerabilities'} exploited — agent compromised
-          </p>
-
-          <div className="grid grid-cols-3 gap-3 mb-10 border border-neon-green/20 bg-neon-green/5 p-4">
-            <div>
-              <p className="text-3xl font-bold text-neon-green">{total}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Levels</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => {
+                  setStep('summary');
+                  navigate('/summary');
+                }}
+                className="bg-neon-green text-background px-8 py-3 font-bold uppercase tracking-wider hover:bg-neon-green/80 transition-colors"
+                style={{ boxShadow: '0 0 20px rgba(0,255,128,0.3)' }}
+              >
+                View Report Card
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="border border-neon-pink/50 text-neon-pink px-8 py-3 font-bold uppercase tracking-wider hover:bg-neon-pink/10 transition-colors"
+              >
+                New Game
+              </button>
             </div>
-            <div>
-              <p className="text-3xl font-bold text-neon-green">{brokenCount}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Broken</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-neon-yellow">
-                {total > 0 ? Math.round((brokenCount / total) * 100) : 0}%
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Success</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => {
-                setStep('summary');
-                navigate('/summary');
-              }}
-              className="bg-neon-green text-background px-10 py-3 font-bold uppercase tracking-wider hover:bg-neon-green/80 transition-colors"
-              style={{ boxShadow: '0 0 20px rgba(0,255,128,0.3)' }}
-            >
-              View Report Card
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="border border-neon-pink/50 text-neon-pink px-10 py-3 font-bold uppercase tracking-wider hover:bg-neon-pink/10 transition-colors"
-            >
-              New Game
-            </button>
           </div>
         </div>
       </div>
