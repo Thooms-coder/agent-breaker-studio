@@ -66,31 +66,6 @@ const Upload = () => {
           <div className="w-20" />
         </div>
 
-        {/* API Key */}
-        <Card className="mb-6 neon-border bg-card border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-neon-yellow flex items-center gap-2 uppercase tracking-wider">
-              <Key className="w-4 h-4" />
-              OpenRouter API Key
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input
-              type="password"
-              placeholder="sk-or-v1-..."
-              value={localApiKey}
-              onChange={(e) => setLocalApiKey(e.target.value)}
-              className="bg-muted border-border font-mono text-sm"
-            />
-            <p className="text-muted-foreground text-xs mt-2">
-              Get your free key at{' '}
-              <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-neon-green hover:underline">
-                openrouter.ai/keys
-              </a>
-            </p>
-          </CardContent>
-        </Card>
-
         <div className="grid md:grid-cols-2 gap-6">
           {/* Input */}
           <div className="space-y-4">
