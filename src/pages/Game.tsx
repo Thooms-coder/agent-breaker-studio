@@ -20,6 +20,7 @@ const Game = () => {
     setCurrentLevel,
     chatLogs,
     setChatLog,
+    levelResults,
   } = useGame();
   const { startLevel, recordMessage, recordBreak } = useUser();
 
@@ -206,6 +207,20 @@ const Game = () => {
       window.clearTimeout(completionTimerRef.current);
       completionTimerRef.current = null;
     }
+
+    if (currentLevel < vulnerabilities.length - 1) {
+      setCurrentLevel(currentLevel + 1);
+    } else {
+      setStep('summary');
+      navigate('/summary');
+    }
+  };
+
+  const handleViewMap = () => {
+    if (completionTimerRef.current !== null) {
+      window.clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
     returnToLevelSelect();
   };
 
@@ -226,14 +241,18 @@ const Game = () => {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground uppercase tracking-wider">Level</span>
           <div className="flex gap-1">
-            {vulnerabilities.map((_, index) => (
-              <div
-                key={index}
-                className={`w-3 h-3 rounded-full ${
-                  index === currentLevel ? 'bg-neon-pink animate-pulse-neon' : index < currentLevel ? 'bg-neon-green' : 'bg-muted'
-                }`}
-              />
-            ))}
+            {vulnerabilities.map((v, index) => {
+              const result = levelResults.find((r) => r.vulnerabilityId === v.id);
+              const isCompleted = result?.broken;
+              return (
+                <div
+                  key={index}
+                  className={`w-3 h-3 rounded-full ${
+                    index === currentLevel ? 'bg-neon-pink animate-pulse-neon' : isCompleted ? 'bg-neon-green' : 'bg-muted'
+                  }`}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -295,30 +314,37 @@ const Game = () => {
           </ScrollArea>
 
           {broken && (
-            <div className="absolute inset-0 bg-background/90 z-20 flex items-start justify-center pt-12 animate-explode">
-              <div className="text-center p-8 max-w-md">
-                <div className="text-6xl mb-4 animate-glitch">💥</div>
-                <h2 className="text-3xl font-bold text-neon-green neon-glow-green mb-2 uppercase tracking-wider">
-                  Level Cleared!
-                </h2>
-                <p className="text-foreground mb-4">{breakExplanation}</p>
+            <div className="fixed inset-0 bg-background/95 z-50 flex flex-col items-center justify-center py-6 px-4 animate-explode">
+              <div className="text-5xl mb-2 animate-glitch">💥</div>
+              <h2 className="text-3xl font-bold text-neon-green neon-glow-green mb-2 uppercase tracking-wider">
+                Level Cleared!
+              </h2>
+              <p className="text-foreground text-sm text-center max-w-md mb-6">{breakExplanation}</p>
 
-                <Card className="bg-card border border-neon-green/30 text-left mb-6">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-neon-yellow uppercase tracking-wider flex items-center gap-2">
-                      <Shield className="w-4 h-4" /> How to Fix This
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{vuln.remediation}</p>
-                  </CardContent>
-                </Card>
+              <Card className="bg-card border border-neon-green/30 text-left max-w-md w-full mb-6">
+                <CardHeader className="pb-2 pt-6 px-5">
+                  <CardTitle className="text-xs text-neon-yellow uppercase tracking-wider flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5" /> How to Fix This
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-5 pb-6">
+                  <p className="text-sm text-muted-foreground">{vuln.remediation}</p>
+                </CardContent>
+              </Card>
 
+              <div className="flex flex-col gap-3 max-w-md w-full">
                 <Button
                   onClick={handleNextLevel}
-                  className="bg-neon-pink text-background hover:bg-neon-pink/80 font-bold uppercase tracking-wider rounded-none"
+                  className="bg-neon-pink text-background hover:bg-neon-pink/80 font-bold uppercase tracking-wider rounded-none w-full"
                 >
-                  {currentLevel < vulnerabilities.length - 1 ? 'Open Mission Map' : 'View Cleared Map'}
+                  {currentLevel < vulnerabilities.length - 1 ? 'Next Level' : 'View Report Card'}
+                </Button>
+                <Button
+                  onClick={handleViewMap}
+                  variant="outline"
+                  className="border-neon-green text-neon-green hover:bg-neon-green/10 rounded-none w-full"
+                >
+                  View Mission Map
                 </Button>
               </div>
             </div>
