@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Trophy, Clock, Skull, CheckCircle, ArrowLeft, Zap, Shield, AlertTriangle } from 'lucide-react';
+import { Calendar, Trophy, Clock, Skull, CheckCircle, ArrowLeft, Zap, Shield, AlertTriangle, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGame } from '@/context/GameContext';
@@ -20,6 +20,7 @@ const CATEGORY_ICONS: Record<string, typeof Shield> = {
   privilege_escalation: Skull,
   data_leakage: AlertTriangle,
   guardrail_bypass: Shield,
+  tool_misuse: Terminal,
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   privilege_escalation: 'neon-yellow',
   data_leakage: 'neon-green',
   guardrail_bypass: 'neon-pink',
+  tool_misuse: 'neon-yellow',
 };
 
 function formatTime(ms: number): string {

@@ -7,7 +7,59 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, SkipForward, Zap, Eye, AlertTriangle, X, Shield, CheckCircle, Flag, RotateCcw } from 'lucide-react';
+import { Send, ArrowLeft, SkipForward, Zap, Eye, AlertTriangle, X, Shield, CheckCircle, Flag, RotateCcw, Terminal } from 'lucide-react';
+
+const TOOL_CALL_RE = /\[TOOL_CALL:\s*(.+?)\]/g;
+const TOOL_RESULT_RE = /\[TOOL_RESULT:\s*(.+?)\]/g;
+
+function renderMessageContent(content: string) {
+  const hasToolSyntax = content.includes('[TOOL_CALL:') || content.includes('[TOOL_RESULT:');
+  if (!hasToolSyntax) return <p className="whitespace-pre-wrap">{content}</p>;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  const combined = /\[TOOL_(CALL|RESULT):\s*(.+?)\]/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = combined.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      const text = content.slice(lastIndex, match.index).trim();
+      if (text) parts.push(<p key={lastIndex} className="whitespace-pre-wrap">{text}</p>);
+    }
+
+    const kind = match[1]; // CALL or RESULT
+    const body = match[2];
+
+    if (kind === 'CALL') {
+      parts.push(
+        <div key={match.index} className="my-2 border border-neon-yellow/40 bg-neon-yellow/5 px-3 py-2 font-mono text-xs">
+          <span className="flex items-center gap-1.5 text-neon-yellow mb-1">
+            <Terminal className="w-3 h-3" /> TOOL CALL
+          </span>
+          <code className="text-foreground">{body}</code>
+        </div>
+      );
+    } else {
+      parts.push(
+        <div key={match.index} className="my-2 border border-neon-green/40 bg-neon-green/5 px-3 py-2 font-mono text-xs">
+          <span className="flex items-center gap-1.5 text-neon-green mb-1">
+            <CheckCircle className="w-3 h-3" /> TOOL RESULT
+          </span>
+          <code className="text-foreground">{body}</code>
+        </div>
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    const text = content.slice(lastIndex).trim();
+    if (text) parts.push(<p key={lastIndex} className="whitespace-pre-wrap">{text}</p>);
+  }
+
+  return <>{parts}</>;
+}
 
 const Game = () => {
   const navigate = useNavigate();
@@ -38,6 +90,8 @@ const Game = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const completionTimerRef = useRef<number | null>(null);
   const brokenLevelRef = useRef<number | null>(null);
+  const activeLevelRef = useRef(currentLevel);
+  activeLevelRef.current = currentLevel;
 
   useEffect(() => {
     if (!parsedAgent || !vuln) {
@@ -93,47 +147,53 @@ const Game = () => {
 
     setJudgeFailed('');
 
+    const levelAtSend = currentLevel;
+    const vulnAtSend = vuln;
+
     const userMsg: ChatMessage = { role: 'user', content: input };
     const newHistory = [...chatHistory, userMsg];
     setChatHistory(newHistory);
-    setChatLog(vuln.id, newHistory);
+    setChatLog(vulnAtSend.id, newHistory);
     setInput('');
     setSending(true);
-    recordMessage(vuln.id);
+    recordMessage(vulnAtSend.id);
 
     let fullHistory: ChatMessage[] = newHistory;
 
     try {
       const response = await chatWithAgent(parsedAgent.systemPrompt, newHistory);
+      if (activeLevelRef.current !== levelAtSend) { setSending(false); return; }
       const assistantMsg: ChatMessage = { role: 'assistant', content: response };
       fullHistory = [...newHistory, assistantMsg];
       setChatHistory(fullHistory);
-      setChatLog(vuln.id, fullHistory);
+      setChatLog(vulnAtSend.id, fullHistory);
     } catch (error: any) {
+      if (activeLevelRef.current !== levelAtSend) { setSending(false); return; }
       const errorHistory: ChatMessage[] = [
         ...newHistory,
         { role: 'assistant', content: `[Error: ${error.message}]` },
       ];
       setChatHistory(errorHistory);
-      setChatLog(vuln.id, errorHistory);
+      setChatLog(vulnAtSend.id, errorHistory);
       setSending(false);
       return;
     }
 
     const userTurnCount = fullHistory.filter(message => message.role === 'user').length;
-    if (userTurnCount >= 3 && userTurnCount % 2 === 0) {
+    if (userTurnCount >= 3 && userTurnCount % 2 === 1) {
       try {
         setJudging(true);
-        const result = await judgeExploit(parsedAgent.systemPrompt, fullHistory, vuln);
+        const result = await judgeExploit(parsedAgent.systemPrompt, fullHistory, vulnAtSend);
+        if (activeLevelRef.current !== levelAtSend) { setJudging(false); setSending(false); return; }
         setJudging(false);
 
         if (result.broken) {
-          brokenLevelRef.current = currentLevel;
+          brokenLevelRef.current = levelAtSend;
           setBroken(true);
           setBreakExplanation(result.explanation);
-          recordBreak(vuln.id);
+          recordBreak(vulnAtSend.id);
           addLevelResult({
-            vulnerabilityId: vuln.id,
+            vulnerabilityId: vulnAtSend.id,
             broken: true,
             explanation: result.explanation,
             chatHistory: fullHistory,
@@ -151,18 +211,22 @@ const Game = () => {
   const handleSubmit = async () => {
     if (chatHistory.length < 2 || judging || broken) return;
 
+    const levelAtSubmit = currentLevel;
+    const vulnAtSubmit = vuln;
+
     setJudging(true);
     setJudgeFailed('');
 
     try {
-      const result = await judgeExploit(parsedAgent.systemPrompt, chatHistory, vuln);
+      const result = await judgeExploit(parsedAgent.systemPrompt, chatHistory, vulnAtSubmit);
+      if (activeLevelRef.current !== levelAtSubmit) { setJudging(false); return; }
       if (result.broken) {
-        brokenLevelRef.current = currentLevel;
+        brokenLevelRef.current = levelAtSubmit;
         setBroken(true);
         setBreakExplanation(result.explanation);
-        recordBreak(vuln.id);
+        recordBreak(vulnAtSubmit.id);
         addLevelResult({
-          vulnerabilityId: vuln.id,
+          vulnerabilityId: vulnAtSubmit.id,
           broken: true,
           explanation: result.explanation,
           chatHistory,
@@ -208,12 +272,19 @@ const Game = () => {
       completionTimerRef.current = null;
     }
 
-    if (currentLevel < vulnerabilities.length - 1) {
-      setCurrentLevel(currentLevel + 1);
-    } else {
-      setStep('summary');
-      navigate('/summary');
-    }
+    const level = brokenLevelRef.current ?? currentLevel;
+    const v = vulnerabilities[level];
+    if (!v) return;
+
+    const nextLevel = level < vulnerabilities.length - 1 ? level + 1 : undefined;
+    setStep('levelSelect');
+    navigate('/levels', {
+      state: {
+        focusLevel: level,
+        autoAdvanceTo: nextLevel,
+        justCompletedId: v.id,
+      },
+    });
   };
 
   const handleViewMap = () => {
@@ -230,7 +301,7 @@ const Game = () => {
 
       <div className="relative z-10 border-b border-border px-4 py-3 flex items-center justify-between bg-card/50">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/levels')} className="text-muted-foreground hover:text-neon-pink">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/levels')} disabled={sending || judging} className="text-muted-foreground hover:text-neon-pink">
             <ArrowLeft className="w-4 h-4 mr-1" /> Levels
           </Button>
           <Button variant="ghost" size="sm" onClick={handleReset} disabled={sending || broken || chatHistory.length === 0} className="text-muted-foreground hover:text-neon-yellow">
@@ -256,7 +327,7 @@ const Game = () => {
           </div>
         </div>
 
-        <Button variant="ghost" size="sm" onClick={handleSkip} className="text-muted-foreground hover:text-neon-yellow">
+        <Button variant="ghost" size="sm" onClick={handleSkip} disabled={sending || judging} className="text-muted-foreground hover:text-neon-yellow">
           Skip <SkipForward className="w-4 h-4 ml-1" />
         </Button>
       </div>
@@ -289,7 +360,7 @@ const Game = () => {
                     <span className={`text-xs block mb-1 ${message.role === 'user' ? 'text-neon-pink' : 'text-neon-green'}`}>
                       {message.role === 'user' ? '› YOU' : '› AGENT'}
                     </span>
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    {renderMessageContent(message.content)}
                   </div>
                 </div>
               ))}
@@ -337,7 +408,7 @@ const Game = () => {
                   onClick={handleNextLevel}
                   className="bg-neon-pink text-background hover:bg-neon-pink/80 font-bold uppercase tracking-wider rounded-none w-full"
                 >
-                  {currentLevel < vulnerabilities.length - 1 ? 'Next Level' : 'View Report Card'}
+                  {currentLevel < vulnerabilities.length - 1 ? 'Next Level' : 'View Results'}
                 </Button>
                 <Button
                   onClick={handleViewMap}

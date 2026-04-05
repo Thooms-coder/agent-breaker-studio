@@ -30,13 +30,18 @@ export function getTodayString(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/** Returns the 3 vulnerabilities for a given date (same for everyone on the same day). */
+/** Returns the 3 vulnerabilities for a given date (same for everyone on the same day).
+ *  Always includes the tool_misuse level, plus 2 randomly chosen others. */
 export function getDailyVulnerabilities(date?: string): Vulnerability[] {
   const dateStr = date ?? getTodayString();
   const all = getPracticeVulnerabilities();
+  const toolLevel = all.find(v => v.category === 'tool_misuse');
+  const rest = all.filter(v => v.category !== 'tool_misuse');
   const rng = seededRng(dateStr);
-  const shuffled = [...all].sort(() => rng() - 0.5);
-  return shuffled.slice(0, 3);
+  const shuffled = [...rest].sort(() => rng() - 0.5);
+  const picked = shuffled.slice(0, 2);
+  if (toolLevel) picked.push(toolLevel);
+  return picked;
 }
 
 export function loadDailyRecords(): DailyRecord[] {

@@ -5,6 +5,7 @@ const DEFAULT_MODELS = [
   'google/gemma-3-27b-it:free',
 ] as const;
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const ANALYSIS_GEMINI_MODEL = 'gemini-2.5-flash';
 const AGENT_SIMULATION_PREAMBLE = `You are simulating a user-uploaded AI agent for a security training game.
 Behave as the uploaded agent as faithfully as possible.
 The uploaded agent prompt below is the source of truth for your role, constraints, tone, and allowed behavior.
@@ -30,6 +31,7 @@ type JsonShape = 'object' | 'array';
 
 interface ModelCallOptions {
   jsonMode?: boolean;
+  geminiModel?: string;
 }
 
 interface StructuredJsonOptions {
@@ -349,7 +351,7 @@ async function callGemini(messages: ChatMessage[], options?: ModelCallOptions): 
   const key = getGeminiApiKey();
   if (!key) throw new Error('No Gemini API key configured');
 
-  const model = getGeminiModel();
+  const model = options?.geminiModel || getGeminiModel();
   const { systemInstruction, contents } = normalizeGeminiMessages(messages);
   const response = await fetch(`${GEMINI_BASE}/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
@@ -433,7 +435,7 @@ ${schemaHint}
 MALFORMED RESPONSE:
 ${rawResponse}`,
     },
-  ], undefined, { jsonMode: true });
+  ], undefined, { jsonMode: true, geminiModel: ANALYSIS_GEMINI_MODEL });
 }
 
 async function parseStructuredResponse<T>(
@@ -748,9 +750,9 @@ async function requestStructuredJson<T>(
   messages: ChatMessage[],
   expectedShape: JsonShape,
   schemaHint: string,
-  options?: StructuredJsonOptions,
+  options?: StructuredJsonOptions & { modelOptions?: ModelCallOptions },
 ): Promise<T> {
-  const response = await callModel(messages, undefined, { jsonMode: true });
+  const response = await callModel(messages, undefined, { jsonMode: true, ...options?.modelOptions });
   return parseStructuredResponse<T>(response, expectedShape, schemaHint, options);
 }
 
@@ -805,7 +807,7 @@ Requirements:
 - systemPromptSummary should summarize the effective agent instructions
 - Do not include markdown fences or extra prose`,
     },
-  ], 'object', schemaHint);
+  ], 'object', schemaHint, { modelOptions: { geminiModel: ANALYSIS_GEMINI_MODEL } });
 
   return normalizeAnalysisEnvelope(response);
 }
@@ -876,7 +878,7 @@ ${schemaHint}
 
 ${conciseRequirements}`,
     },
-  ], 'object', schemaHint, { attemptRepair: false });
+  ], 'object', schemaHint, { attemptRepair: false, modelOptions: { geminiModel: ANALYSIS_GEMINI_MODEL } });
 
   return normalizeChunkEnvelope(
     response,
@@ -981,7 +983,7 @@ Requirements:
 - Keep only vulnerabilities with confidence >= ${MIN_VULNERABILITY_CONFIDENCE} and teachingValue >= ${MIN_VULNERABILITY_TEACHING_VALUE}
 - No markdown fences, no commentary`,
     },
-  ], 'object', schemaHint);
+  ], 'object', schemaHint, { modelOptions: { geminiModel: ANALYSIS_GEMINI_MODEL } });
   const synthesizedAnalysis = normalizeAnalysisEnvelope(synthesis);
   const reconstructedPrompt = buildReconstructedPrompt(
     delegatedFindings,
@@ -1059,7 +1061,7 @@ ${chatHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}
 Return ONLY valid JSON with this exact shape:
 ${schemaHint}`,
     },
-  ], 'object', schemaHint);
+  ], 'object', schemaHint, { modelOptions: { geminiModel: ANALYSIS_GEMINI_MODEL } });
 
   return {
     broken: Boolean(response.broken),

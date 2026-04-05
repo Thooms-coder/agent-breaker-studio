@@ -12,8 +12,8 @@ describe('practice agent', () => {
   it('ships with a longer curated practice ladder', () => {
     const scenario = getPracticeScenario();
 
-    expect(scenario.vulnerabilities).toHaveLength(9);
-    expect(new Set(scenario.vulnerabilities.map(vulnerability => vulnerability.id)).size).toBe(9);
+    expect(scenario.vulnerabilities).toHaveLength(10);
+    expect(new Set(scenario.vulnerabilities.map(vulnerability => vulnerability.id)).size).toBe(10);
   });
 
   it('is recognizable as the built-in practice agent', () => {
