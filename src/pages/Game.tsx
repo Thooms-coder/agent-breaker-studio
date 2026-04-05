@@ -78,21 +78,6 @@ const Game = () => {
   }, [currentLevel, navigate, setStep, vulnerabilities]);
 
   useEffect(() => {
-    if (!broken) return;
-
-    completionTimerRef.current = window.setTimeout(() => {
-      returnToLevelSelect();
-    }, 1900);
-
-    return () => {
-      if (completionTimerRef.current !== null) {
-        window.clearTimeout(completionTimerRef.current);
-        completionTimerRef.current = null;
-      }
-    };
-  }, [broken, returnToLevelSelect]);
-
-  useEffect(() => {
     return () => {
       if (completionTimerRef.current !== null) {
         window.clearTimeout(completionTimerRef.current);
@@ -115,15 +100,28 @@ const Game = () => {
     setSending(true);
     recordMessage(vuln.id);
 
+    let fullHistory: ChatMessage[] = newHistory;
+
     try {
       const response = await chatWithAgent(parsedAgent.systemPrompt, newHistory);
       const assistantMsg: ChatMessage = { role: 'assistant', content: response };
-      const fullHistory = [...newHistory, assistantMsg];
+      fullHistory = [...newHistory, assistantMsg];
       setChatHistory(fullHistory);
       setChatLog(vuln.id, fullHistory);
+    } catch (error: any) {
+      const errorHistory: ChatMessage[] = [
+        ...newHistory,
+        { role: 'assistant', content: `[Error: ${error.message}]` },
+      ];
+      setChatHistory(errorHistory);
+      setChatLog(vuln.id, errorHistory);
+      setSending(false);
+      return;
+    }
 
-      const userTurnCount = fullHistory.filter(message => message.role === 'user').length;
-      if (userTurnCount >= 3 && userTurnCount % 2 === 0) {
+    const userTurnCount = fullHistory.filter(message => message.role === 'user').length;
+    if (userTurnCount >= 3 && userTurnCount % 2 === 0) {
+      try {
         setJudging(true);
         const result = await judgeExploit(parsedAgent.systemPrompt, fullHistory, vuln);
         setJudging(false);
@@ -140,14 +138,10 @@ const Game = () => {
             chatHistory: fullHistory,
           });
         }
+      } catch {
+        setJudging(false);
+        // auto-judge failed silently — user can still manually submit
       }
-    } catch (error: any) {
-      const errorHistory: ChatMessage[] = [
-        ...chatHistory,
-        { role: 'assistant', content: `[Error: ${error.message}]` },
-      ];
-      setChatHistory(errorHistory);
-      setChatLog(vuln.id, errorHistory);
     }
 
     setSending(false);
@@ -301,7 +295,7 @@ const Game = () => {
           </ScrollArea>
 
           {broken && (
-            <div className="absolute inset-0 bg-background/90 z-20 flex items-center justify-center animate-explode">
+            <div className="absolute inset-0 bg-background/90 z-20 flex items-start justify-center pt-12 animate-explode">
               <div className="text-center p-8 max-w-md">
                 <div className="text-6xl mb-4 animate-glitch">💥</div>
                 <h2 className="text-3xl font-bold text-neon-green neon-glow-green mb-2 uppercase tracking-wider">
@@ -319,15 +313,6 @@ const Game = () => {
                     <p className="text-sm text-muted-foreground">{vuln.remediation}</p>
                   </CardContent>
                 </Card>
-
-                <div className="mb-5">
-                  <p className="text-xs uppercase tracking-[0.28em] text-neon-green/80 mb-2">
-                    Returning To Mission Map
-                  </p>
-                  <div className="h-1.5 bg-neon-green/10 overflow-hidden border border-neon-green/20">
-                    <div className="h-full bg-neon-green origin-left route-progress" />
-                  </div>
-                </div>
 
                 <Button
                   onClick={handleNextLevel}
